@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Widget_Manager.h"
 
@@ -36,7 +35,6 @@ void UWidget_Manager::AddKeyInfo(short quantity)
 	if (key_info_counter >= 10)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation!");
-		//» вызываетс€ какой-то метод дл€ окончани€ игры
 	}
 }
 
@@ -94,19 +92,16 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 	{
 		return node_info.node_id == node_ptr->id;
 	};
-	//¬озможно коллизию у серых узлов включать не нужно, но хз, по идее она в принципе должна быть только у управ€емых узлов, а известный != управл€емый
 	if (asID)
 	{
 		if (known_nodes.ContainsByPredicate(f)) return;
 		known_nodes.Add(FNodeInfo(node_ptr->id));
 		node_ptr->SetActorHiddenInGame(false);
-		//node_ptr->SetActorEnableCollision(true);
 	}
 	else
 	{
 		node_ptr->Mesh->SetMaterial(0, node_ptr->main_mat);
 		node_ptr->SetActorHiddenInGame(false);
-		//node_ptr->SetActorEnableCollision(true);
 		FNodeInfo* fast_ptr = known_nodes.FindByPredicate(f);
 		if (fast_ptr != nullptr)
 		{
@@ -122,7 +117,6 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 		{
 			AddNodeInfo(nodeLink->targetNode, true);
 			nodeLink->targetNode->SetActorHiddenInGame(false);
-			//nodeLink->targetNode->SetActorEnableCollision(true);
 			nodeLink->link->SetActorHiddenInGame(false);
 		}
 	}
@@ -188,7 +182,6 @@ void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node
 		if (source_node->sInformation)
 		{
 			packet->sInformation->key_info_count = source_node->sInformation->key_info_count;
-			//по идее тут же надо переводить айдишники, чтоб нам не приходилось преоброзовывать spy_ref
 		}
 		if (spoof_id)
 		{
