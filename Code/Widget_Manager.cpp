@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include <functional>
 #include "Widget_Manager.h"
 
 UWidget_Manager* UWidget_Manager::self_ref = nullptr;
@@ -33,6 +32,7 @@ FNodeInfo::FNodeInfo(ANodeBase* _node_ptr)
 void UWidget_Manager::AddKeyInfo(short quantity)
 {
 	key_info_counter += quantity;
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Key info progress: " + FString::FromInt(key_info_counter) + "/10 !");
 	if (key_info_counter >= 10)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation!");
@@ -87,6 +87,7 @@ FString UWidget_Manager::FillNodeCharacteristic(ANodeBase* node_ptr)
 	}
 	return str;
 }
+
 void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 {
 	auto f = [node_ptr](const FNodeInfo &node_info) -> bool
@@ -105,7 +106,7 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 	{
 		node_ptr->Mesh->SetMaterial(0, node_ptr->main_mat);
 		node_ptr->SetActorHiddenInGame(false);
-		node_ptr->SetActorEnableCollision(true);
+		//node_ptr->SetActorEnableCollision(true);
 		FNodeInfo* fast_ptr = known_nodes.FindByPredicate(f);
 		if (fast_ptr != nullptr)
 		{
@@ -127,7 +128,6 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 	}
 	
 }
-
 
 void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node)
 {
@@ -168,13 +168,12 @@ void UWidget_Manager::InitAttack(int target_node_id, ANodeBase* source_node, boo
 	{
 		APacket* packet = GetWorld()->SpawnActor<APacket>(ANodeBase::packetTemp, source_node->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 		packet->InitPacket(_packetType, source_node->id, target_node_id);
-		packet->Mesh->SetMaterial(0, APacket::attackMat);
+		packet->sThreat->sign = _sign;
 		if (spoof_id)
 		{
 			packet->source_id = spoof_id;
 		}
-		if (attack_type == 3) packet->sThreat = new APacket::Threat(_sign, source_node->id);
-		else packet->sThreat = new APacket::Threat(_sign);
+		if (attack_type == 2) packet->sThreat->spy_id = source_node->id;
 		source_node->SendPacket(packet, nodes, (*nodes).begin());
 	}
 }
@@ -185,9 +184,12 @@ void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node
 	{
 		APacket* packet = GetWorld()->SpawnActor<APacket>(ANodeBase::packetTemp, source_node->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 		packet->InitPacket(PacketType::Informative, source_node->id, target_node_id);
-		packet->Mesh->SetMaterial(0, APacket::infoMat);
-		packet->sInformation = new APacket::Information;
 		packet->sInformation->for_spy_ref = source_node;
+		if (source_node->sInformation)
+		{
+			packet->sInformation->key_info_count = source_node->sInformation->key_info_count;
+			//по идее тут же надо переводить айдишники, чтоб нам не приходилось преоброзовывать spy_ref
+		}
 		if (spoof_id)
 		{
 			packet->source_id = spoof_id;
@@ -196,20 +198,5 @@ void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node
 	}
 }
 
-void inline UWidget_Manager::AcceptEmployee(int index)
-{
-	//За кадром происходит удаление из vertical box
-	employee_offers.RemoveAt(index);
-}
-/*void UWidget_Manager::FillOffer()
-{
-	TArray<TArray<FString>> arr = {};
-	arr.Reserve(20);
-	for (Employee* emp : employee_offers)
-	{
-		arr.Add(emp->GetFullInfo());
-	}
-	return arr;
-}*/
 
 

@@ -45,16 +45,6 @@ void APacket::FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam
 	helpMat = help;
 }
 
-APacket::Threat::Threat(Signature _sign)
-{
-	sign = _sign;
-}
-APacket::Threat::Threat(Signature _sign, int _spy_id)
-{
-	sign = _sign;
-	spy_id = _spy_id;
-}
-
 //Тут ещё надо время правильно высчитывать, пока что нет поправки на расстояние
 float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target)
 {
@@ -105,7 +95,11 @@ void APacket::InitPacket(PacketType _packetType, short _sourceId, short _targetI
 		Mesh->SetMaterial(0, helpMat);
 		sHelper = new Helper();
 	} break;
-	default: Mesh->SetMaterial(0, attackMat); break;
+	default: 
+	{
+		Mesh->SetMaterial(0, attackMat);
+		sThreat = new Threat();
+	} break;
 	}
 	source_id = _sourceId;
 	target_id = _targetId;

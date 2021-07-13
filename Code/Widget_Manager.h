@@ -65,14 +65,4 @@ public:
 	void InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
 	UFUNCTION(BlueprintCallable)
 	void InitInformative(int target_node_id, ANodeBase* source_node, int spoof_id);
-
-////////////////////////ПЕРСОНАЛ/////////////////////////////////
-	//UFUNCTION(BlueprintCallable, Category = "Employee")
-	//void FillOffer();
-	UFUNCTION(BlueprintCallable, Category = "Employee")
-	void AcceptEmployee(int index);
-
-	//Для этих ребят можно выделить память по некоторой верхней границе
-	UPROPERTY(BlueprintReadWrite, Category = "Employee")
-	TArray<UEmployee*> employee_offers;
 };

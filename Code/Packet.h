@@ -48,7 +48,7 @@ public:
 
 	void InitPacket(PacketType _packetType, short _sourceId, short _targetId);
 
-	short source_id, target_id;
+	short source_id = -2, target_id = -2;
 	PacketType packetType;
 	struct Helper
 	{
@@ -69,15 +69,13 @@ public:
 	{
 		bool isDSRequest = false;
 		short key_info_count = 0;
-		int roots_from_id = -1;
+		int roots_for_id = -2;
 		AActor* for_spy_ref = nullptr;
 	};
 	Information* sInformation;
 	struct Threat
 	{
-		Threat(Signature _sign);
-		Threat(Signature _sign, int _spy_id);
-		Signature sign;
+		Signature sign = Signature::NotSign;
 		int spy_id = -2;
 	};
 	Threat* sThreat;
