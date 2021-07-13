@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 #include "NodeSC.h"
@@ -25,26 +24,12 @@ void ANodeSC::BeginPlay()
 void ANodeSC::Tick(float DeltaTime)
 {
 	ANodeBase::Tick(DeltaTime);
-	//min + (rand() % (max - min + 1))
-	/*if (nodeState != NodeState::Overloaded && nodeState != NodeState::Offline && !nodeLinks.empty())
-	{
-		GeneratePacket(std::rand() % (101));
-	}*/
-
 }
 
 void ANodeSC::AcceptPacket(APacket* packet)
 {
-	/* „то есть только у узла безопасности?
-		*	1. —истема сканировани€ сети (интеллектуальна€ Xd)
-		*		ћожно сделать так, что все узлы высылают свои пакеты узлу безопасности и он на их основе принимает решение..но это слишком массивно и тупо
-		*	2. ћожно ему присвоить навыки отвоЄвывани€ узлов
-		*		¬ режиме тревоги, если известен захваченный узел, он отвоЄвываетс€ каким то образом
-		*	3. ¬ общем то апгрейд систем защиты других узлов и есть отдельна€ механика
-	*/
 	if (packet->packetType == PacketType::Helpful)
 	{
-		//“ут плохо получаетс€
 		if (have_recovery_system)
 		{
 			switch (packet->sHelper->helpState)
@@ -83,13 +68,6 @@ void ANodeSC::AcceptPacket(APacket* packet)
 		{
 			if (!ANodeBase::IsAlarm)
 			{
-				/* “ревога:
-				*	1. ”величивает веро€тность обнаружени€ вредоносного пакета
-				*	2. ѕереводит политику в режим всЄ запрещено
-				*	3. ѕри наличии механики и таких узлов, начинаетс€ процес отвоЄвывани€ узлов
-				*	4. ¬озможно сканирование сети становитс€ более агрессивным (что повышает нагрузку на сеть)
-				*	5. ¬ зависимости от времени атаки, запускаетс€ процесс спасени€ от апокалипсиса
-				*/
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Alarm!!!");
 				ANodeBase::IsAlarm = true;
 				ANodeBase::politic = Politic::OnlyAllowed;
@@ -112,13 +90,6 @@ void ANodeSC::AcceptPacket(APacket* packet)
 
 void ANodeSC::GeneratePacket(int chance)
 {
-	/* SC генерирует:
-	* : ничего
-	* : пакеты проверки (что-то подобное хочетс€ реализовать)
-	* : полезные пакеты (если происходит атака, если нет то ничего)
-	* : может быть обычные пакеты (пакеты проверки?) 
-	* “ут надо шансы подвергать поправке на ?безопасника? узла и прочее (если будет)
-	*/
 }
 
 void ANodeSC::SaveThisWorld()
@@ -136,10 +107,9 @@ void ANodeSC::SaveThisWorld()
 			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::tuple<FTimerHandle*, bool>{timer, false});
 			sApocalypseRescueKit->map_id_vec.insert({ _i, sApocalypseRescueKit->list_size });
 
-			//«апускаетс€ таймер, если ответа не приходит, то начинают спамитьс€ киллеры
+			//The timer starts, if there is no response, then the killers start spamming
 			GetWorldTimerManager().SetTimer(*timer, [this, _id = _i, vec_num = sApocalypseRescueKit->list_size, path = *nodes]
 			{
-				//“ак как путь статичен, € копирую в стэк вектор узлов, а уже из него создаю копию в куче и указатель на неЄ
 				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
 				std::advance(it, vec_num);
 				if (std::get<1>(*it))
