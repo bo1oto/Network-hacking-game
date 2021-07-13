@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -9,7 +8,7 @@
 
 
 bool ANodeBase::IsAlarm = false;
-Politic ANodeBase::politic = Politic::NotForbidden;//вообще, политика должна определяться, исходя из уровня
+Politic ANodeBase::politic = Politic::NotForbidden;
 int ANodeBase::sameSignChance = 85;
 int ANodeBase::upSignChance = 10;
 int ANodeBase::behaviorChance = 15;
@@ -19,7 +18,6 @@ TSubclassOf<APacket> ANodeBase::packetTemp = nullptr;
 
 ANodeBase::ANodeBase()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
 	RootComponent = Mesh;
@@ -36,8 +34,6 @@ void ANodeBase::BeginPlay()
 void ANodeBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//min + (rand() % (max - min + 1))
-
 }
 
 void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode)
@@ -77,13 +73,6 @@ void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNo
 FString ANodeBase::GetInfo()
 {
 	FString str = TEXT("id: ") + FString::FromInt(id) + "\n" + TEXT("vlan: ") + FString::FromInt(vlan) + "\n" + TEXT("workload: ") + FString::FromInt(workload);
-	//Тут можно сделать перебор среди штат, и выделить тех, у кого есть доступ к узлу
-	/*std::vector<UEmployee*>::const_iterator it = staff.begin();
-	while (it != staff.end())
-	{
-		str += (((*it)->GetShortInfo()).c_str());
-		++it; 
-	}*/
 	return str;
 }
 FText ANodeBase::GetTypeInfo()
@@ -124,7 +113,6 @@ inline void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_tim
 	}, 1.0f, false, delay_time);
 }
 
-//Потом, если будет продолжение разработки, то реализую тут алгоритм Дийкстры попросту, с учётом скорости линков, размера и прочего
 std::vector<ANodeBase*> ANodeBase::ComputeNodePath(ANodeBase* sender, int _id, int counter)
 {
 	if (this->id != _id)
@@ -154,7 +142,6 @@ std::vector<ANodeBase*> ANodeBase::ComputeNodePath(ANodeBase* sender, int _id, i
 }
 int ANodeBase::FindRouter(int _vlan, int counter)
 {
-	//Если TI находится в более чем двух соединениях, то метод зацикливается
 	for (auto node : nodeLinks)
 	{
 		if (node->link->isAlive && node->targetNode->vlan == _vlan)
@@ -194,7 +181,6 @@ std::vector<ANodeBase*>* ANodeBase::DeterminePath(int node_id)
 	if (nodeType == NodeType::TechnicalInfrastructure) return new std::vector<ANodeBase*> { this };
 	std::vector<ANodeBase*>* nodes = nullptr;
 	ANodeBase* fast_bolv = nullptr;
-	//Проверка соседних узлов
 	switch (node_id)
 	{
 		default:
@@ -228,8 +214,7 @@ std::vector<ANodeBase*>* ANodeBase::DeterminePath(int node_id)
 		return nullptr;
 	}
 }
-
-//Физическое перемещение пакета
+//Physical dispatch
 void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it)
 {
 	if (nodeState == NodeState::Offline || nodeState == NodeState::Overloaded)
@@ -276,7 +261,7 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::v
 		(*it)->CheckPacket(packet, vec, it);
 	}, 1.0f, false, time);
 }
-//Промежуточная проверка пакета
+//Intermediate check (all nodes on the packet path)
 void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it)
 {
 	if (nodeState == NodeState::Offline || nodeState == NodeState::Overloaded)
@@ -291,9 +276,9 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 	if (sProtection && sProtection->isOn)
 	{
 		/*
-		* 0 - отклонить
-		* 1 - пропустить
-		* 2 - //Дополнительная проверка
+		* 0 - Deny
+		* 1 - Allow
+		* 2 - Additional verification 
 		*/
 		switch (sProtection->SourceTargetCheck(packet))
 		{
@@ -309,7 +294,7 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Add_check");
 			delay_time += 1.0f;
 			add_work += 5;
-			//какие-то указания к доп проверке (по политике)
+			//Additional verification...
 			break;
 		}
 	}
@@ -339,13 +324,10 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 		AcceptPacket(packet);
 	}
 }
-//Обработка пакета узлом назначения
 void ANodeBase::AcceptPacket(APacket* packet)
 {
 	short add_work = 0;
 	float processing_time = 0.0f; 
-	//По идее не нужна, так как CheckPacket отсеет таких, а он всегда перед AcceptPacket
-	//if (nodeState == NodeState::Overloaded || nodeState == NodeState::Offline) goto finish_acceptance;
 	if (sProtection && sProtection->isOn)
 	{
 		add_work += 5;
@@ -363,7 +345,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 	{
 		case PacketType::AttackSpam:
 		{
-			//Сильно повышает нагрузку узла
+			//greatly increases the load
 			add_work += 50;
 			processing_time += 3.0f;
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spamed!");
@@ -371,12 +353,13 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		} break;
 		case PacketType::Simple:
 		{
-			//просто пакет просто повышает нагрузку
+			//just a packet, just loads
 			add_work += 4;
 			processing_time += 1.5f;
 		} break;
 		case PacketType::AttackSpy:
 		{
+			//infects the node with a spy who collects information and sends it to a hacker
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy here!");
 			sSpyInfo = new SpyInfo{ FTimerHandle(), 0, packet->sThreat->spy_id };
 			AddWorkload(5);
@@ -411,20 +394,17 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		} break;
 		case PacketType::AttackCapture:
 		{
+			//puts the node under the control of a hacker
 			add_work += 6;
 			processing_time += 1.5f;
 			nodeState = NodeState::Captured;
 			if (sProtection) sProtection->isOn = false;
 			UWidget_Manager::self_ref->AddNodeInfo(this, false);
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
-			//пакет, содержащий в себе вредоносный код, захватывающий узел (при прочих условиях)
 		} break;
 		case PacketType::AttackCrash:
 		{
-			//Просто переводит узел в режим оффлайн
-			//Наверно тут же должен запускаться таймер восстановления узла в строй (у каждого своё время и свои потери вроде как)
-			//С другой стороны, тут поможет только физическое вмешательство
-			//Но пока так
+			//Shuts down the node completely
 			nodeState = NodeState::Offline;
 			FTimerHandle timer = FTimerHandle();
 			GetWorldTimerManager().SetTimer(timer, [this]
@@ -435,12 +415,13 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		} break;
 		case PacketType::Informative:
 		{
-			//...
+			//All effects in AcceptPacket of other nodes 
 			add_work += 4;
 			processing_time += 1.5f;
 		} break;
 		case PacketType::Helpful:
 		{
+			//Heal or kill node
 			add_work += 5;
 			processing_time += 3.0f;
 			bool operationState = false;
@@ -516,7 +497,7 @@ finish_acceptance:
 	AddWorkloadWithDelay(add_work, processing_time);
 	packet->Destroy();
 }
-//Находим ближайший узел безопасности и отправляем ему пакет с тревогой
+
 void ANodeBase::SendAlarmPacket()
 {
 	if (nodeType == NodeType::Security)
@@ -564,32 +545,22 @@ bool ANodeBase::Protection::SignatureCheck(APacket* packet)
 
 int ANodeBase::Protection::SourceTargetCheck(APacket* packet)
 {
-	/* Какие у нас отношения тут присутствуют?
-	*	1. Пакеты из EO (0-5) при политики OnlyAllowed блокируются, при NotForbidden только определённые?
-	*	2. Пакеты из EO в DS и обратно блокируются всегда (Может быть, если это EO, ведущее к другому филиалу например, но это на потом)
-	*	3. Пакеты из SC и TI в EO и обратно подвержены доп проверке?
-	*	4. Пакеты из TI в DS подвержены доп проверке
-	*	5. Пакеты из TI как источника это в принципе странно
-	* 
-	*/
-	/* 
-	* 0 - отклонить
-	* 1 - пропустить
-	* 2 - //Дополнительная проверка (в зависимоти от политики)
+	/*
+	* 0 - Deny
+	* 1 - Allow
+	* 2 - Additional verification 
 	*/
 	int s_id = packet->source_id, t_id = packet->target_id;
-	if (s_id < 5)//Если это источник EO
+	if (s_id < 5)//If source is EO
 	{
-		if (politic == Politic::OnlyAllowed) return 0;//Тут поправка на другие филиалы
-		if (t_id < 70) return 0;//Если таргет это не PC (тут не уверен, надо подумать)
-		//Тут возможно условие, что если запрещён этот id
+		if (politic == Politic::OnlyAllowed) return 0;
+		if (t_id < 70) return 0;//If target is not PC
 		return 1;
 	}
-	if (t_id < 5)//Если таргет это EO
+	if (t_id < 5)//If target is EO
 	{
-		if (politic == Politic::OnlyAllowed) return 0;//Тут поправка на другие филиалы
-		if (s_id < 70) return 1;//Если источник это не PC (тут не уверен, надо подумать)
-		//Тут возможно условие, что если запрещён этот id
+		if (politic == Politic::OnlyAllowed) return 0;
+		if (s_id < 70) return 1;//If source is not PC 
 		return 1;
 	}
 	return 1;
