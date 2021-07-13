@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -9,9 +8,6 @@
 #include "NodeBase.h"
 #include "NodeSC.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class UNCRUSHABLE_API ANodeSC : public ANodeBase
 {
