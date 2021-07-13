@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -33,15 +32,15 @@ class UNCRUSHABLE_API UWidget_Manager : public UUserWidget
 	GENERATED_BODY()
 	
 private:
-	/* 10 - победа
-	* Перехваченный пакет из DS к PC - 1
-	* Информация, скачанная из DS (в зависимости от количества DS, но так обычно это 10)
-	* Информация, содержащаяся на PC/SC - 2
+	/* 10 - victory
+	* Intercepted packet from DS to PC - 1
+	* Information downloaded from DS (depending on the number of DS, but this is usually 10)
+	* Information contained on PC/SC - 2
 	*/
 	short key_info_counter = 0;
 
 public:
-////////////////////////ВЗЛОМЩИК/////////////////////////////////
+////////////////////////Hacker/////////////////////////////////
 	UFUNCTION(BlueprintCallable)
 	static void SetSelfRef(UWidget_Manager* _self_ref);
 	static UWidget_Manager* self_ref;
