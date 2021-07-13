@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -22,7 +21,7 @@ enum Politic
 {
 	OnlyAllowed = 0,
 	NotForbidden
-	//Может что то про тревогу, но это потом
+	//Something more maybe
 };
 UENUM(BlueprintType)
 enum NodeState
@@ -79,15 +78,7 @@ public:
 
 	struct Protection final
 	{
-		/* Тогда обычные узлы имеют:
-		*	1. Сигнатурную проверку (туда же входит эвристика) +
-		*	2. Обнаружение на основе поведения (себя ?и соседей?)
-		*		Если на узле присутствует шпионское ПО, то при каждом отправлении пакета во внешние выходы, есть шанс обнаружения такого ПО
-		*	3. Анти-спам фильтр (он идёт отдельно) +
-		*	4. Обработка пакетов из неизвестных источников +-
-		*	5. Вроде нормально, но вроде чего-то не хватает
-		*/
-		int size;
+		int size;//Future feature
 		bool spamFilter = false, isOn = true, behaviorAnalizer = false;
 		std::vector<Signature> threatSigns;
 		bool SignatureCheck(APacket* packet);
