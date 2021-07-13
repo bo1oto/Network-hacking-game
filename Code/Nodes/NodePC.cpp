@@ -60,23 +60,22 @@ void ANodePC::GeneratePacket(int chance)
 		}
 		return id;
 	};
-	/* PC генерирует:
-	* 0-65: ничего
-	* 65-90: обычный
-	* 90-95: пакет с рутом одного узла
-	* 95-100: пакет запрос к DS, возвращается пакет с частью ключевой информациии
+	/* PC chance:
+	* 0-65: nothing
+	* 65-90: simple for PC/EO
+	* 90-95: informative for PC/DS (contain roots for PC/DS/TI)
+	* 95-100: packet-request for DS, that return informative packet with key info
 	*/
 	if (chance < 65) return;
 	else if (chance >= 65 && chance < 90)
 	{
 		if (ANodeEO::id_counter == 0) return;
 		if (ANodePC::id_counter == 70) return;
-		//В PC/EO отправляется обычный пакет
 		int _id = -2;
 		switch (std::rand() % (2))
 		{
-		case 0: _id = generate_PC_ID(); break; //В PC
-		case 1: _id = std::rand() % (ANodeEO::id_counter); break; //В EO
+		case 0: _id = generate_PC_ID(); break; //PC
+		case 1: _id = std::rand() % (ANodeEO::id_counter); break; //EO
 		}
 
 		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
@@ -91,12 +90,11 @@ void ANodePC::GeneratePacket(int chance)
 	{
 		if (ANodeDS::id_counter == 50) return;
 		if (ANodePC::id_counter == 70) return;
-		//В PC/DS отправляется информационный пакет c информацией о рутах в одном PC/DS/TI
 		int _id = -1;
 		switch (std::rand() % (2))
 		{
-		case 0: _id = generate_PC_ID(); break; //В PC
-		case 1: _id = 50 + std::rand() % (ANodeDS::id_counter - 50); break; //В DS
+		case 0: _id = generate_PC_ID(); break; //PC
+		case 1: _id = 50 + std::rand() % (ANodeDS::id_counter - 50); break; //DS
 		}
 
 		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
@@ -116,7 +114,6 @@ void ANodePC::GeneratePacket(int chance)
 	else if (chance >= 95)
 	{
 		if (ANodeDS::id_counter == 50) return;
-		//В DS отправляется пакет-запрос, в ответе на который будет содержаться часть ключевой информации
 		int _id = 50 + std::rand() % (ANodeDS::id_counter - 50);
 
 		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
