@@ -27,7 +27,6 @@ private:
 	bool have_recovery_system = false;
 	FTimerHandle helpTimer;
 
-	void CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it, float time = 0.0f) final;
 	void AcceptPacket(APacket* packet) final;
 	void GeneratePacket(int chance) final;
 

@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+#include "NodeTI.h"
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
 #include <functional>
-#include "NodeTI.h"
 #include "NodeSC.h"
 
 int ANodeTI::id_counter = 10;
@@ -29,7 +29,7 @@ void ANodeTI::AcceptPacket(APacket* packet)
 {
 	if (packet->target_id != id)
 	{
-		if (packet->packetType == PacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm)
+		if (packet->packetType == PacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && nodeState != NodeState::Captured)
 		{
 			//То ищем ближайший известный узел безопасности
 			std::vector<ANodeBase*> main, bolv;

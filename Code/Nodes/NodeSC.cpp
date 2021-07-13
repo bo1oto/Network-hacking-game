@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+#include "NodeSC.h"
 #include "Nodes.h"
-//#include "NodeSC.h"
 
 int ANodeSC::id_counter = 30;
 
@@ -33,18 +33,6 @@ void ANodeSC::Tick(float DeltaTime)
 
 }
 
-void ANodeSC::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it, float time)
-{
-	//Тут считаем time и проводим соответствующую обработку
-	time = 0.1f;
-	//Проверяем пакет, исходя из собственных средств
-	if (it != vec->end() - 1)//Если это не узел назначения, то мы что то делаем
-	{
-		//Что то делаем
-		time += 0.5f;
-	}
-	ANodeBase::CheckPacket(packet, vec, it, time);
-}
 void ANodeSC::AcceptPacket(APacket* packet)
 {
 	/* Что есть только у узла безопасности?
@@ -143,7 +131,6 @@ void ANodeSC::SaveThisWorld()
 			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 			packet->InitPacket(PacketType::Helpful, this->id, _i);
 			packet->sHelper->helpState = APacket::Helper::HelpState::Healer;
-			SendPacket(packet, nodes, (*nodes).begin());
 
 			FTimerHandle* timer = new FTimerHandle();
 			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::tuple<FTimerHandle*, bool>{timer, false});
@@ -153,9 +140,8 @@ void ANodeSC::SaveThisWorld()
 			GetWorldTimerManager().SetTimer(*timer, [this, _id = _i, vec_num = sApocalypseRescueKit->list_size, path = *nodes]
 			{
 				//Так как путь статичен, я копирую в стэк вектор узлов, а уже из него создаю копию в куче и указатель на неё
-				int item_num = sApocalypseRescueKit->map_id_vec[vec_num];
 				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
-				std::advance(it, item_num);
+				std::advance(it, vec_num);
 				if (std::get<1>(*it))
 				{
 					std::vector<ANodeBase*>* nodes = new std::vector<ANodeBase*>{ path };
@@ -168,9 +154,16 @@ void ANodeSC::SaveThisWorld()
 				else
 				{
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Not yet for " + FString::FromInt(_id));
+					FTimerHandle timer = FTimerHandle();
+					GetWorldTimerManager().SetTimer(timer, [it]
+					{
+						std::get<1>(*it) = true;
+					}, 1.0f, false, 30.0f);
 				}
 				
-			}, 20.0f, true, 20.0f);
+			}, 15.0f, true, 15.0f);
+
+			SendPacket(packet, nodes, (*nodes).begin());
 
 			sApocalypseRescueKit->list_size++;
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Healer for " + FString::FromInt(_i) + " coming!");

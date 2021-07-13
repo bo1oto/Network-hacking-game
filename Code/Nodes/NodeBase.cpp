@@ -2,15 +2,15 @@
 
 #pragma once
 
+#include "NodeBase.h"
 #include "Uncrushable/Widget_Manager.h"
 #include "NodeTI.h"
 #include "NodeSC.h"
-//#include "NodeBase.h"
 
 
 bool ANodeBase::IsAlarm = false;
 Politic ANodeBase::politic = Politic::NotForbidden;//вообще, политика должна определ€тьс€, исход€ из уровн€
-int ANodeBase::sameSignChance = 95;
+int ANodeBase::sameSignChance = 85;
 int ANodeBase::upSignChance = 10;
 int ANodeBase::behaviorChance = 15;
 int ANodeBase::healChance = 60;
@@ -28,9 +28,6 @@ ANodeBase::ANodeBase()
 void ANodeBase::BeginPlay()
 {
 	Super::BeginPlay();
-	//this->PrimaryActorTick.TickInterval = 1;//вообщем то нормальна€ тема, только вот перемещаютс€ узлы с таким же интервалом. 
-	//Ќо нас это не волнует в режиме взлома. ¬ принципе его можно переключать в режиме защиты. “.е. ставить 1с после старта
-	//ѕолитика, protection, и прочие подобные реб€та определ€ютс€, исход€ из уровн€
 	nodeState = NodeState::Working;
 	sProtection = new Protection();
 	sProtection->threatSigns = { Signature::Crash_1, Signature::RootKit_1, Signature::Spy_1 };
@@ -109,7 +106,8 @@ inline void ANodeBase::AddWorkload(short quantity)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "I'm (" + FString::FromInt(this->id) + ") dead");
 		nodeState = NodeState::Overloaded;
-		GetWorldTimerManager().SetTimer(timerHandle, [this]
+		FTimerHandle full_unload_timer = FTimerHandle();
+		GetWorldTimerManager().SetTimer(full_unload_timer, [this]
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::FromInt(id) + " unloaded");
 			nodeState = NodeState::Working;
@@ -118,13 +116,14 @@ inline void ANodeBase::AddWorkload(short quantity)
 }
 inline void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
 {
-	GetWorldTimerManager().SetTimer(timerHandle, [_add_work, this]
+	AddWorkload(_add_work);
+	FTimerHandle unloading_timer = FTimerHandle();
+	GetWorldTimerManager().SetTimer(unloading_timer, [_add_work, this]
 	{
-		AddWorkload(_add_work);
+		AddWorkload(-_add_work);
 	}, 1.0f, false, delay_time);
 }
 
-//ќн может зациклитьс€ в теории
 //ѕотом, если будет продолжение разработки, то реализую тут алгоритм ƒийкстры попросту, с учЄтом скорости линков, размера и прочего
 std::vector<ANodeBase*> ANodeBase::ComputeNodePath(ANodeBase* sender, int _id, int counter)
 {
@@ -174,11 +173,7 @@ ANodeBase* ANodeBase::CheckNeighbour(int node_id)
 {
 	for (auto nodeLink : nodeLinks)
 	{
-		if (nodeLink->targetNode->id == node_id)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Node (by id) is neighbour");
-			return nodeLink->targetNode;
-		}
+		if (nodeLink->targetNode->id == node_id) return nodeLink->targetNode;
 	}
 	return nullptr;
 }
@@ -208,6 +203,7 @@ std::vector<ANodeBase*>* ANodeBase::DeterminePath(int node_id)
 	case -1:
 		fast_bolv = CheckNeighbour(NodeType::Security);
 		break;
+	case -2: return nullptr;
 	}
 	if (fast_bolv)
 	{
@@ -251,41 +247,26 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::v
 		return;
 	}
 	float time = packet->sPacketMove->ComputeNodePath(*it, *(it + 1));
-	if ((*it)->IsHidden() || (*(it + 1))->IsHidden())
+	if (!(*it)->IsHidden() || !(*(it + 1))->IsHidden())
 	{
-		auto check_link = [](std::vector<NodeLink*> fst_node, std::vector<NodeLink*> snd_node)
+		for (auto nodeLink : (*it)->nodeLinks)
 		{
-			for (auto fst_link : fst_node)
+			if (nodeLink->targetNode == *(it + 1))
 			{
-				for (auto snd_link : snd_node)
+				if (nodeLink->link->IsHidden())
 				{
-					if (fst_link->link == snd_link->link)
-					{
-						if (fst_link->link->IsHidden())
-						{
-							return true;
-						}
-						else
-						{
-							return false;
-						}
-					}
+					packet->SetActorHiddenInGame(true);
+				}
+				else
+				{
+					packet->SetActorHiddenInGame(false);
 				}
 			}
-			return true;
-		};
-		if (check_link((*it)->nodeLinks, (*(it + 1))->nodeLinks))
-		{
-			packet->SetActorHiddenInGame(true);
-		}
-		else
-		{
-			packet->SetActorHiddenInGame(false);
 		}
 	}
 	else 
 	{ 
-		packet->SetActorHiddenInGame(false); 
+		packet->SetActorHiddenInGame(true); 
 	}
 	*it = nullptr;
 	it++;
@@ -296,7 +277,7 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::v
 	}, 1.0f, false, time);
 }
 //ѕромежуточна€ проверка пакета
-void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it, float time)
+void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it)
 {
 	if (nodeState == NodeState::Offline || nodeState == NodeState::Overloaded)
 	{
@@ -305,10 +286,10 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 		packet->Destroy();
 		return;
 	}
+	short add_work = 0;
+	float delay_time = 0.0f;
 	if (sProtection && sProtection->isOn)
 	{
-		short add_work = 2;
-		float _delay_time = 0.1f;
 		/*
 		* 0 - отклонить
 		* 1 - пропустить
@@ -318,34 +299,38 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 		{
 		case 0:
 			packet->Destroy();
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Bad politic");
 			return;
 		case 1: 
-			time += 0.1f;
+			delay_time += 0.2f;
+			add_work += 2;
 			break;
 		case 2:
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Add_check");
-			time += 1.0f;
+			delay_time += 1.0f;
 			add_work += 5;
-			_delay_time += 1.0f;
 			//какие-то указани€ к доп проверке (по политике)
 			break;
 		}
-		AddWorkloadWithDelay(add_work, _delay_time);
 	}
 	if (sSpyInfo)
 	{
 		if (packet->packetType == PacketType::Informative && packet->sInformation->key_info_count)
 		{
-			this->sInformation->key_info_count += packet->sInformation->key_info_count;
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Stolen!");
+			this->sSpyInfo->stolen_key_info += packet->sInformation->key_info_count;
+			add_work += 5;
+			delay_time += 1.0f;
 		}
 	}
 	if (it != vec->end() - 1)
 	{
+		AddWorkloadWithDelay(add_work, delay_time);
 		FTimerHandle timer = FTimerHandle();
 		GetWorldTimerManager().SetTimer(timer, [packet, vec, it]
 		{
 			(*it)->SendPacket(packet, vec, it);
-		}, 1.0f, false, time);
+		}, 1.0f, false, delay_time);
 	}
 	else
 	{
@@ -393,7 +378,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		case PacketType::AttackSpy:
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy here!");
-			sSpyInfo = new SpyInfo{ FTimerHandle(), packet->sThreat->spy_id };
+			sSpyInfo = new SpyInfo{ FTimerHandle(), 0, packet->sThreat->spy_id };
 			AddWorkload(5);
 			GetWorldTimerManager().SetTimer(sSpyInfo->spyTimer, [this]
 			{
@@ -406,18 +391,23 @@ void ANodeBase::AcceptPacket(APacket* packet)
 					SendAlarmPacket();
 					return;
 				}
-
 				std::vector<ANodeBase*>* nodes = DeterminePath(sSpyInfo->spy_id);
 				if (nodes && !(*nodes).empty())
 				{
 					APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 					packet->InitPacket(PacketType::Simple, this->id, sSpyInfo->spy_id);
+					packet->sInformation = new APacket::Information();
 					packet->sInformation->for_spy_ref = this;
-					packet->sInformation->key_info_count += this->sInformation->key_info_count;
-					this->sInformation->key_info_count = 0;
+					packet->sInformation->key_info_count += sSpyInfo->stolen_key_info;
+					sSpyInfo->stolen_key_info = 0;
+					if (this->sInformation)
+					{
+						packet->sInformation->key_info_count += this->sInformation->key_info_count;
+						this->sInformation->key_info_count = 0;
+					}
 					SendPacket(packet, nodes, (*nodes).begin());
 				}
-			}, 15.0f, true, 15.0f);
+			}, 20.0f, true, 20.0f);
 		} break;
 		case PacketType::AttackCapture:
 		{
@@ -436,7 +426,8 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			//— другой стороны, тут поможет только физическое вмешательство
 			//Ќо пока так
 			nodeState = NodeState::Offline;
-			GetWorldTimerManager().SetTimer(timerHandle, [this]
+			FTimerHandle timer = FTimerHandle();
+			GetWorldTimerManager().SetTimer(timer, [this]
 			{
 				nodeState = NodeState::Working;
 			}, 1.0f, false, 30.0f);
@@ -450,7 +441,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		} break;
 		case PacketType::Helpful:
 		{
-			add_work += 10;
+			add_work += 5;
 			processing_time += 3.0f;
 			bool operationState = false;
 			if (nodeState == NodeState::Captured || sSpyInfo)
@@ -459,35 +450,43 @@ void ANodeBase::AcceptPacket(APacket* packet)
 				{
 				case APacket::Helper::HelpState::Killer:
 				{
-					if (rand() % (100 + 1) < killChance)
+					if (rand() % (101) < killChance)
 					{
 
-						add_work += 20;
+						add_work += 10;
 						processing_time += 5;
-						operationState = true;
-						delete sSpyInfo;
-						AddWorkload(-5);
-						GetWorldTimerManager().SetTimer(timerHandle, [this]
+						operationState = true; 
+						if (sSpyInfo)
+						{
+							delete sSpyInfo;
+							AddWorkload(-5);
+						}
+						FTimerHandle timer = FTimerHandle();
+						GetWorldTimerManager().SetTimer(timer, [this]
 						{
 							nodeState = NodeState::Offline;
-						}, 0.0f, false, 6.0f);
+						}, 0.0f, false, 2.0f);
 						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "EZ Kill!");
 					}
 				}
 				break;
 				case APacket::Helper::HelpState::Healer:
 				{
-					if (rand() % (100 + 1) < healChance)
+					if (rand() % (101) < healChance)
 					{
 						add_work += 30;
 						processing_time += 10;
 						operationState = true;
-						delete sSpyInfo;
-						AddWorkload(-5);
-						GetWorldTimerManager().SetTimer(timerHandle, [this]
+						if (sSpyInfo)
+						{
+							delete sSpyInfo;
+							AddWorkload(-5);
+						}
+						FTimerHandle timer = FTimerHandle();
+						GetWorldTimerManager().SetTimer(timer, [this]
 						{
 							nodeState = NodeState::Working;
-						}, 0.0f, false, 11.0f);
+						}, 1.0f, false, 11.0f);
 						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "EZ Heal!");
 					}
 				}
@@ -562,10 +561,9 @@ bool ANodeBase::Protection::SignatureCheck(APacket* packet)
 	}
 	return false;
 }
-//¬опрос политик актуален конечно, пока что хрень получилась, котора€ не пускает alarm пакеты
+
 int ANodeBase::Protection::SourceTargetCheck(APacket* packet)
 {
-	return 1;
 	/*  акие у нас отношени€ тут присутствуют?
 	*	1. ѕакеты из EO (0-5) при политики OnlyAllowed блокируютс€, при NotForbidden только определЄнные?
 	*	2. ѕакеты из EO в DS и обратно блокируютс€ всегда (ћожет быть, если это EO, ведущее к другому филиалу например, но это на потом)
@@ -587,15 +585,13 @@ int ANodeBase::Protection::SourceTargetCheck(APacket* packet)
 		//“ут возможно условие, что если запрещЄн этот id
 		return 1;
 	}
-	if (s_id >= 10 && s_id < 30) return 2;//≈сли пакет создан из TI (не уверен)
-	if (t_id < 5)
+	if (t_id < 5)//≈сли таргет это EO
 	{
 		if (politic == Politic::OnlyAllowed) return 0;//“ут поправка на другие филиалы
-		if (t_id < 70) return 0;//≈сли источник это не PC (тут не уверен, надо подумать)
+		if (s_id < 70) return 1;//≈сли источник это не PC (тут не уверен, надо подумать)
 		//“ут возможно условие, что если запрещЄн этот id
 		return 1;
 	}
-	if (t_id >= 10 && t_id < 30) return 2;//≈сли таргет TI это тоже странно (не уверен)
 	return 1;
 }
 

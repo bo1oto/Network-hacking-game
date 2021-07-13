@@ -114,7 +114,7 @@ public:
 
 	
 	void SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it);
-	virtual void CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it, float time = 0.0f);
+	virtual void CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it);
 	virtual void AcceptPacket(APacket* packet);
 
 
@@ -129,12 +129,12 @@ public:
 
 
 private:
-	FTimerHandle timerHandle;
 
 	struct SpyInfo
 	{
 		FTimerHandle spyTimer;
-		int spy_id;
+		int stolen_key_info = 0;
+		int spy_id = -2;
 	};
 	SpyInfo* sSpyInfo;
 

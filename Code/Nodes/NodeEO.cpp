@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Uncrushable/Widget_Manager.h"
 #include "NodeEO.h"
+#include "Uncrushable/Widget_Manager.h"
 
 int ANodeEO::id_counter = 0;
 
@@ -14,15 +14,22 @@ void ANodeEO::BeginPlay()
 	ANodeBase::BeginPlay();
 	nodeType = NodeType::ExternalOutput;
 	nodeState = NodeState::Captured;
+	delete sProtection;
+	sProtection = nullptr;
 	id = id_counter;
 	id_counter++;
 }
 
 void ANodeEO::AcceptPacket(APacket* packet)
 {
-	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Informative && packet->sInformation->for_spy_ref)
+	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
+		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
+		if (packet->sInformation->roots_for_id)
+		{
+			//каким то образом находим его (переменная будет ссылкой) и добавляем в изввестные по id
+		}
 		ANodeBase::Information* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
 		if (fast_ptr)
 		{
@@ -31,7 +38,6 @@ void ANodeEO::AcceptPacket(APacket* packet)
 				UWidget_Manager::self_ref->AddNodeInfo(elem, true);
 			}
 
-			if (fast_ptr->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(fast_ptr->key_info_count);
 		}
 	}
 	ANodeBase::AcceptPacket(packet);
