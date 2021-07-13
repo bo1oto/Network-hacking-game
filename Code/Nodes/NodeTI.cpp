@@ -1,6 +1,6 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+
 #include "NodeTI.h"
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
 #include <functional>
@@ -31,7 +31,7 @@ void ANodeTI::AcceptPacket(APacket* packet)
 	{
 		if (packet->packetType == PacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && nodeState != NodeState::Captured)
 		{
-			//То ищем ближайший известный узел безопасности
+			// Then look for the closest known security node
 			std::vector<ANodeBase*> main, bolv;
 			for (int i = ANodeSC::id_counter - 1; i >= 30; i--)
 			{
