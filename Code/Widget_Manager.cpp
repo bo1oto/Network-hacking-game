@@ -123,7 +123,7 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 	
 }
 
-void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node)
+void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id)
 {
 	std::vector<ANodeBase*>* nodes = source_node->DeterminePath(target_node_id);
 	if (nodes != nullptr && !(*nodes).empty())
@@ -131,6 +131,10 @@ void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node)
 		APacket* packet = GetWorld()->SpawnActor<APacket>(ANodeBase::packetTemp, source_node->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 		packet->Mesh->SetMaterial(0, APacket::spamMat);
 		packet->InitPacket(PacketType::AttackSpam, source_node->id, target_node_id);
+		if (spoof_id >= 0)
+		{
+			packet->source_id = spoof_id;
+		}
 		source_node->SendPacket(packet, nodes, (*nodes).begin());
 	}
 }
@@ -163,7 +167,7 @@ void UWidget_Manager::InitAttack(int target_node_id, ANodeBase* source_node, boo
 		APacket* packet = GetWorld()->SpawnActor<APacket>(ANodeBase::packetTemp, source_node->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 		packet->InitPacket(_packetType, source_node->id, target_node_id);
 		packet->sThreat->sign = _sign;
-		if (spoof_id)
+		if (spoof_id >= 0)
 		{
 			packet->source_id = spoof_id;
 		}
@@ -183,7 +187,7 @@ void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node
 		{
 			packet->sInformation->key_info_count = source_node->sInformation->key_info_count;
 		}
-		if (spoof_id)
+		if (spoof_id >= 0)
 		{
 			packet->source_id = spoof_id;
 		}
