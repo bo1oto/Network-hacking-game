@@ -59,7 +59,7 @@ public:
 
 
 	UFUNCTION(BlueprintCallable)
-	void InitSpamAttack(int target_node_id, ANodeBase* source_node);
+	void InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id);
 	UFUNCTION(BlueprintCallable)
 	void InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
 	UFUNCTION(BlueprintCallable)
