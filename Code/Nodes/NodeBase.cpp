@@ -442,12 +442,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 							delete sSpyInfo;
 							AddWorkload(-5);
 						}
-						FTimerHandle timer = FTimerHandle();
-						GetWorldTimerManager().SetTimer(timer, [this]
-						{
-							nodeState = NodeState::Offline;
-						}, 0.0f, false, 2.0f);
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "EZ Kill!");
+						nodeState = NodeState::Offline;
 					}
 				}
 				break;
@@ -463,12 +458,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 							delete sSpyInfo;
 							AddWorkload(-5);
 						}
-						FTimerHandle timer = FTimerHandle();
-						GetWorldTimerManager().SetTimer(timer, [this]
-						{
-							nodeState = NodeState::Working;
-						}, 1.0f, false, 11.0f);
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "EZ Heal!");
+						nodeState = NodeState::Working;
 					}
 				}
 				break;
