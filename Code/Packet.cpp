@@ -45,25 +45,20 @@ void APacket::FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam
 
 float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target)
 {
+	float speed = 4;
 	path.clear();
-	float _x, _y, _z;
-	float speed = 5;
 	FVector range = target->GetActorLocation() - source->GetActorLocation();
 	int max_i = (int)(range.Size() / speed);
-	
-	_x = range.X / max_i;
-	_y = range.Y / max_i;
-	_z = range.Z / max_i;
+	FVector _vec = range / max_i;
 	FVector vec = source->GetActorLocation();
 	for (int i = 0; i < max_i; i++)
 	{
 		path.push_back(vec);
-		vec += FVector(_x, _y, _z);
+		vec += _vec;
 	}
-	path.push_back(target->GetActorLocation());
 	it_path = path.begin();
 	iden = true;
-	return (max_i + 1.0f) / 60.0f;
+	return max_i / 60.0f;//60 FPS
 }
 void APacket::InitPacket(PacketType _packetType, short _sourceId, short _targetId)
 {
