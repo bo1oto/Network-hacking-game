@@ -31,15 +31,14 @@ class UNCRUSHABLE_API UWidget_Manager : public UUserWidget
 {
 	GENERATED_BODY()
 	
-private:
-	/* 10 - victory
+public:
+	/* 20 - victory
 	* Intercepted packet from DS to PC - 1
 	* Information downloaded from DS (depending on the number of DS, but this is usually 10)
 	* Information contained on PC/SC - 2
 	*/
-	short key_info_counter = 0;
+	int key_info_counter = 0;
 
-public:
 ////////////////////////Hacker/////////////////////////////////
 	UFUNCTION(BlueprintCallable)
 	static void SetSelfRef(UWidget_Manager* _self_ref);
