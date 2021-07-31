@@ -15,7 +15,7 @@ void ANodeDS::BeginPlay()
 	id = id_counter;
 	id_counter++;
 	sInformation = new Information();
-	sInformation->key_info_count = 10;
+	sInformation->key_info_count = 20;
 }
 
 void ANodeDS::AcceptPacket(APacket* packet)
