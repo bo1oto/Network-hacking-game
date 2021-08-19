@@ -20,28 +20,28 @@ void ANodePC::BeginPlay()
 	id_counter++;
 }
 
-void ANodePC::Tick(float DeltaTime)
-{
-	//min + (rand() % (max - min + 1))
-	if (UWidget_Manager::isGameStart && nodeState != NodeState::Overloaded && nodeState != NodeState::Offline && !nodeLinks.empty())
-	{
-		GeneratePacket(std::rand() % (101));
-	}
-	ANodeBase::Tick(DeltaTime);
-
-}
 void ANodePC::AcceptPacket(APacket* packet)
 {
-	if (have_phys_connection && nodeState == NodeState::Captured 
-		&& packet->packetType == PacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
+	if (have_phys_connection && nodeState == NodeState::Captured && packet->packetType == PacketType::Simple 
+		&& packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
+		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
+		if (!packet->sInformation->roots_for_id.empty())
+		{
+			for (auto root : packet->sInformation->roots_for_id)
+			{
+				if (!UWidget_Manager::self_ref->known_nodes.ContainsByPredicate([root](FNodeInfo nodeInfo)
+				{
+					return nodeInfo.node_id == root;
+				}))
+					UWidget_Manager::self_ref->roots.Add(root);
+			}
+		}
 		ANodeBase::Information* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
 		if (fast_ptr)
 		{
 			for (auto elem : fast_ptr->vec_net_id) UWidget_Manager::self_ref->AddNodeInfo(elem, true);
-
-			if (fast_ptr->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(fast_ptr->key_info_count);
 		}
 	}
 	ANodeBase::AcceptPacket(packet);
@@ -61,13 +61,13 @@ void ANodePC::GeneratePacket(int chance)
 		return id;
 	};
 	/* PC chance:
-	* 0-65: nothing
-	* 65-90: simple for PC/EO
-	* 90-95: informative for PC/DS (contain roots for PC/DS/TI)
-	* 95-100: packet-request for DS, that return informative packet with key info
+	* 0-60: nothing
+	* 60-85: simple for PC/EO
+	* 85-92.5: informative for PC/DS (contain roots for PC/DS/TI)
+	* 92.5-100: packet-request for DS, that return informative packet with key info
 	*/
-	if (chance < 65) return;
-	else if (chance >= 65 && chance < 90)
+	if (chance < 60) return;
+	else if (chance >= 60 && chance < 85)
 	{
 		if (ANodeEO::id_counter == 0) return;
 		if (ANodePC::id_counter == 70) return;
@@ -86,7 +86,7 @@ void ANodePC::GeneratePacket(int chance)
 			SendPacket(packet, nodes, (*nodes).begin());
 		}
 	}
-	else if (chance >= 90 && chance < 95)
+	else if (chance >= 85 && chance < 92.5)
 	{
 		if (ANodeDS::id_counter == 50) return;
 		if (ANodePC::id_counter == 70) return;
@@ -104,14 +104,14 @@ void ANodePC::GeneratePacket(int chance)
 			packet->InitPacket(PacketType::Informative, this->id, _id);
 			switch (std::rand() % (3))
 			{
-			case 0: packet->sInformation->roots_for_id = 70 + std::rand() % (ANodePC::id_counter - 70); break; //Root PC
-			case 1: packet->sInformation->roots_for_id = 50 + std::rand() % (ANodeDS::id_counter - 50); break; //Root DS
-			case 2: packet->sInformation->roots_for_id = 10 + std::rand() % (ANodeTI::id_counter - 10); break; //Root TI
+			case 0: packet->sInformation->roots_for_id.push_back(70 + std::rand() % (ANodePC::id_counter - 70)); break; //Root PC
+			case 1: packet->sInformation->roots_for_id.push_back(50 + std::rand() % (ANodeDS::id_counter - 50)); break; //Root DS
+			case 2: packet->sInformation->roots_for_id.push_back(10 + std::rand() % (ANodeTI::id_counter - 10)); break; //Root TI
 			}
 			SendPacket(packet, nodes, (*nodes).begin());
 		}
 	}
-	else if (chance >= 95)
+	else if (chance >= 92.5)
 	{
 		if (ANodeDS::id_counter == 50) return;
 		int _id = 50 + std::rand() % (ANodeDS::id_counter - 50);
