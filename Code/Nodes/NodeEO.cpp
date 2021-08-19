@@ -25,9 +25,19 @@ void ANodeEO::AcceptPacket(APacket* packet)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
 		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
-		if (packet->sInformation->roots_for_id)
+		if (!packet->sInformation->roots_for_id.empty())
 		{
-			//To be continued...
+			for (auto root : packet->sInformation->roots_for_id)
+			{
+				if (!UWidget_Manager::self_ref->known_nodes.ContainsByPredicate([root](FNodeInfo nodeInfo) -> bool
+				{
+					return nodeInfo.node_id == root && nodeInfo.node_ptr && nodeInfo.node_ptr->nodeState == NodeState::Captured;
+				}))
+				{
+					if (!UWidget_Manager::self_ref->roots.Contains(root)) 
+						UWidget_Manager::self_ref->roots.Add(root);
+				}
+			}
 		}
 		ANodeBase::Information* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
 		if (fast_ptr)
@@ -36,8 +46,11 @@ void ANodeEO::AcceptPacket(APacket* packet)
 			{
 				UWidget_Manager::self_ref->AddNodeInfo(elem, true);
 			}
-
 		}
+	}
+	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Informative && packet->sInformation->key_info_count)
+	{
+		UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 	}
 	ANodeBase::AcceptPacket(packet);
 }
