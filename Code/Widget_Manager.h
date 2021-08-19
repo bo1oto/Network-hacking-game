@@ -37,14 +37,19 @@ public:
 	* Information downloaded from DS (depending on the number of DS, but this is usually 10)
 	* Information contained on PC/SC - 2
 	*/
+	UPROPERTY(BlueprintReadOnly, meta = (BindingWidget))
 	int key_info_counter = 0;
-
+	//Roots are deleted as soon as they have been used + Roots are not important for the captured node
+	UPROPERTY(BlueprintReadWrite, meta = (BindingWidget))
+	TArray<int> roots;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	float network_activity_time_tick = 2.0f;
 ////////////////////////Hacker/////////////////////////////////
 	UFUNCTION(BlueprintCallable)
 	static void SetSelfRef(UWidget_Manager* _self_ref);
 	static UWidget_Manager* self_ref;
 	UFUNCTION(BlueprintCallable)
-	static void StartGame();
+	void StartGame();
 	static bool isGameStart;
 
 	static FString FillNodeCharacteristic(ANodeBase* node_ptr);
@@ -63,4 +68,7 @@ public:
 	void InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
 	UFUNCTION(BlueprintCallable)
 	void InitInformative(int target_node_id, ANodeBase* source_node, int spoof_id);
+
+private:
+	std::vector<FTimerHandle>* generation_timers;
 };
