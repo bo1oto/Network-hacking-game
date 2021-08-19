@@ -22,7 +22,7 @@ void APacket::BeginPlay()
 }
 void APacket::Tick(float DeltaTime)
 {
-	if (sPacketMove->iden)
+	if (sPacketMove->iden && sPacketMove->link->isAlive)
 	{
 		this->SetActorLocation(*(sPacketMove->it_path));
 		sPacketMove->it_path++;
@@ -43,9 +43,10 @@ void APacket::FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam
 	helpMat = help;
 }
 
-float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target)
+float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target, ALink* _link)
 {
-	float speed = 4;
+	float speed = 4 * _link->speed_coef;
+	link = _link;
 	path.clear();
 	FVector range = target->GetActorLocation() - source->GetActorLocation();
 	int max_i = (int)(range.Size() / speed);
@@ -58,28 +59,40 @@ float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target)
 	}
 	it_path = path.begin();
 	iden = true;
-	return max_i / 60.0f;//60 FPS
+	float time = max_i / 60.0f;//60 FPS
+	return time;
 }
 void APacket::InitPacket(PacketType _packetType, short _sourceId, short _targetId)
 {
 	packetType = _packetType;
 	switch (_packetType)
 	{
-	case PacketType::Simple: Mesh->SetMaterial(0, simpleMat); break;
+	case PacketType::Simple:
+	{	
+		Mesh->SetMaterial(0, simpleMat);
+		size = 4;
+	} break;
 	case PacketType::Informative: 
 	{
 		Mesh->SetMaterial(0, infoMat);
+		size = 12;
 		sInformation = new Information();
 	} break;
-	case PacketType::AttackSpam: Mesh->SetMaterial(0, spamMat); break;
+	case PacketType::AttackSpam: 
+	{
+		Mesh->SetMaterial(0, spamMat);
+		size = 4;
+	} break;
 	case PacketType::Helpful: 
 	{
 		Mesh->SetMaterial(0, helpMat);
+		size = 8;
 		sHelper = new Helper();
 	} break;
 	default: 
 	{
 		Mesh->SetMaterial(0, attackMat);
+		size = 6;
 		sThreat = new Threat();
 	} break;
 	}
