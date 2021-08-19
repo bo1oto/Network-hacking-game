@@ -2,8 +2,8 @@
 #pragma once
 
 #include "NodeBase.h"
-#include "Uncrushable/Widget_Manager.h"
 #include "NodeTI.h"
+#include "Uncrushable/Widget_Manager.h"
 #include "NodeSC.h"
 
 
@@ -70,6 +70,16 @@ void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNo
 	targetNode->nodeLinks.push_back(new NodeLink{ _link, sourceNode });
 }
 
+TArray<FText> ANodeBase::GetKeyParameters()
+{
+	// node type, id + vlan, workload, state
+	TArray<FText> arr;
+	arr.Add(FText::FromString(TEXT("Node") + GetTypeInfo().ToString()));
+	arr.Add(FText::FromString(TEXT("ID: ") + FString::FromInt(id) + TEXT(" (") + FString::FromInt(vlan) + TEXT(")")));
+	arr.Add(FText::FromString(TEXT("Workload: ") + FString::FromInt(workload)));
+	arr.Add(FText::FromString(GetStateInfo()));
+	return arr;
+}
 FString ANodeBase::GetInfo()
 {
 	FString str = TEXT("id: ") + FString::FromInt(id) + "\n" + TEXT("vlan: ") + FString::FromInt(vlan) + "\n" + TEXT("workload: ") + FString::FromInt(workload);
@@ -87,6 +97,18 @@ FText ANodeBase::GetTypeInfo()
 	default: return FText::FromString(TEXT("WUT!?"));
 	}
 }
+FString ANodeBase::GetStateInfo()
+{
+	switch (nodeState)
+	{
+	case NodeState::Working: return TEXT("Working");
+	case NodeState::Captured: return TEXT("Captured");
+	case NodeState::Overloaded: return TEXT("Overloaded");
+	case NodeState::Offline: return TEXT("Offline");
+	default: return TEXT("WUT!?");
+	}
+}}
+}
 
 inline void ANodeBase::AddWorkload(short quantity)
 {
@@ -103,7 +125,7 @@ inline void ANodeBase::AddWorkload(short quantity)
 		}, 1.0f, false, 20.0f);
 	}
 }
-inline void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
+void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
 {
 	AddWorkload(_add_work);
 	FTimerHandle unloading_timer = FTimerHandle();
@@ -231,32 +253,28 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::v
 		AcceptPacket(packet);
 		return;
 	}
-	float time = packet->sPacketMove->ComputeNodePath(*it, *(it + 1));
-	if (!(*it)->IsHidden() || !(*(it + 1))->IsHidden())
+	ALink* link = nullptr;
+	for (auto nodeLink : (*it)->nodeLinks)
 	{
-		for (auto nodeLink : (*it)->nodeLinks)
+		if (nodeLink->targetNode == *(it + 1))
 		{
-			if (nodeLink->targetNode == *(it + 1))
-			{
-				if (nodeLink->link->IsHidden())
-				{
-					packet->SetActorHiddenInGame(true);
-				}
-				else
-				{
-					packet->SetActorHiddenInGame(false);
-				}
-			}
+			link = nodeLink->link;
 		}
 	}
-	else 
-	{ 
-		packet->SetActorHiddenInGame(true); 
+	if ((!(*it)->IsHidden() || !(*(it + 1))->IsHidden()) && !link->IsHidden())
+	{
+		packet->SetActorHiddenInGame(false);
 	}
+	else
+	{
+		packet->SetActorHiddenInGame(true);
+	}
+	float time = packet->sPacketMove->ComputeNodePath(*it, *(it + 1), link);
+	link->AddWorkloadWithDelay(packet->size, time);
 	*it = nullptr;
 	it++;
 	FTimerHandle timer = FTimerHandle();
-	GetWorldTimerManager().SetTimer(timer, [packet, vec, it]
+	GetWorldTimerManager().SetTimer(timer, [packet, vec, it, link]
 	{
 		(*it)->CheckPacket(packet, vec, it);
 	}, 1.0f, false, time);
@@ -300,12 +318,15 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 	}
 	if (sSpyInfo)
 	{
-		if (packet->packetType == PacketType::Informative && packet->sInformation->key_info_count)
+		add_work += 5;
+		delay_time += 1.0f;
+		if (packet->packetType == PacketType::Informative)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Stolen!");
-			this->sSpyInfo->stolen_key_info += packet->sInformation->key_info_count;
-			add_work += 5;
-			delay_time += 1.0f;
+			if (packet->sInformation->key_info_count)
+				this->sSpyInfo->stolen_key_info += packet->sInformation->key_info_count;
+			if (!packet->sInformation->roots_for_id.empty())
+				this->sSpyInfo->stolen_roots.insert(
+					this->sSpyInfo->stolen_roots.end(), packet->sInformation->roots_for_id.begin(), packet->sInformation->roots_for_id.end());
 		}
 	}
 	if (it != vec->end() - 1)
@@ -346,7 +367,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		case PacketType::AttackSpam:
 		{
 			//greatly increases the load
-			add_work += 50;
+			add_work += 100;
 			processing_time += 3.0f;
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spamed!");
 			
@@ -360,8 +381,8 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		case PacketType::AttackSpy:
 		{
 			//infects the node with a spy who collects information and sends it to a hacker
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy here!");
-			sSpyInfo = new SpyInfo{ FTimerHandle(), 0, packet->sThreat->spy_id };
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy attack succesful!");
+			sSpyInfo = new SpyInfo{ FTimerHandle(), 0, {}, packet->sThreat->spy_id };
 			AddWorkload(5);
 			GetWorldTimerManager().SetTimer(sSpyInfo->spyTimer, [this]
 			{
@@ -386,6 +407,8 @@ void ANodeBase::AcceptPacket(APacket* packet)
 					if (this->sInformation)
 					{
 						packet->sInformation->key_info_count += this->sInformation->key_info_count;
+						packet->sInformation->roots_for_id.insert(
+							packet->sInformation->roots_for_id.end(), this->sInformation->vec_roots.begin(), this->sInformation->vec_roots.end());
 						this->sInformation->key_info_count = 0;
 					}
 					SendPacket(packet, nodes, (*nodes).begin());
@@ -394,13 +417,58 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		} break;
 		case PacketType::AttackCapture:
 		{
-			//puts the node under the control of a hacker
-			add_work += 6;
-			processing_time += 1.5f;
-			nodeState = NodeState::Captured;
-			if (sProtection) sProtection->isOn = false;
-			UWidget_Manager::self_ref->AddNodeInfo(this, false);
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
+			//puts the node under the control of a hacker, instantly with roots and after many time without
+			if (packet->sThreat->have_root)
+			{
+				add_work += 10;
+				processing_time += 2.0f;
+				nodeState = NodeState::Captured;
+				if (sProtection) sProtection->isOn = false;
+				UWidget_Manager::self_ref->AddNodeInfo(this, false);
+				UWidget_Manager::self_ref->roots.Remove(this->id);
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured by roots!");
+				goto finish_acceptance;
+			}
+			AddWorkload(15);
+			float brutforse_time;
+			short* counter = new short(0);
+			FTimerHandle* brutforseTimer = new FTimerHandle();
+			switch (nodeType)
+			{
+			case NodeType::PersonalComputer: brutforse_time = 100.0f; break;
+			case NodeType::TechnicalInfrastructure: brutforse_time = 1000.0f; break;
+			case NodeType::DataStorage: brutforse_time = 1000.0f; break;
+			case NodeType::Security: brutforse_time = 2000.0f; break;
+			default: brutforse_time = 0.0f; break;
+			}
+			GetWorldTimerManager().SetTimer(*brutforseTimer, [this, brutforseTimer, counter, brutforse_time]
+			{
+				(*counter)++;
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Left until the capture: " + FString::FromInt(brutforse_time / 10 * (*counter)));
+				if (*counter < 10)
+				{
+					if (sProtection && rand() % 101 > 50)
+					{
+						GetWorldTimerManager().ClearTimer(*brutforseTimer);
+						delete counter;
+						delete brutforseTimer;
+						AddWorkload(-15);
+						SendAlarmPacket();
+					}
+				}
+				else
+				{
+					delete counter;
+					GetWorldTimerManager().ClearTimer(*brutforseTimer);
+					delete brutforseTimer;
+					AddWorkload(-15);
+					AddWorkloadWithDelay(10, 2.0f);
+					nodeState = NodeState::Captured;
+					if (sProtection) sProtection->isOn = false;
+					UWidget_Manager::self_ref->AddNodeInfo(this, false);
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
+				}
+			}, brutforse_time / 10.0f, true, 0.0f);
 		} break;
 		case PacketType::AttackCrash:
 		{
@@ -597,6 +665,30 @@ void ANodeBase::AddKeyInfo()
 {
 	if (!sInformation) sInformation = new Information();
 	sInformation->key_info_count = 2;
+}
+void ANodeBase::AddRoots(int root_id)
+{
+	if (!sInformation)
+	{
+		sInformation = new Information();
+		sInformation->vec_roots.push_back(root_id);
+	}
+	else
+	{
+		if (sInformation->vec_roots.empty()) sInformation->vec_roots.push_back(root_id);
+		else
+		{
+			auto contain = [](std::vector<short>& vec, int node_id) -> bool
+			{
+				for (auto elem : vec)
+				{
+					if (elem == node_id) return true;
+				}
+				return false;
+			};
+			if (!contain(sInformation->vec_roots, root_id)) sInformation->vec_roots.push_back(root_id);
+		}
+	}
 }
 bool ANodeBase::ContainInfo()
 {
