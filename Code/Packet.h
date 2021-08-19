@@ -46,7 +46,8 @@ public:
 	UStaticMeshComponent* Mesh;
 
 	void InitPacket(PacketType _packetType, short _sourceId, short _targetId);
-
+	
+	int size;
 	short source_id = -2, target_id = -2;
 	PacketType packetType;
 	struct Helper
@@ -68,13 +69,14 @@ public:
 	{
 		bool isDSRequest = false;
 		short key_info_count = 0;
-		int roots_for_id = -2;
+		std::vector<short> roots_for_id;
 		AActor* for_spy_ref = nullptr;
 	};
 	Information* sInformation;
 	struct Threat
 	{
 		Signature sign = Signature::NotSign;
+		bool have_root = false;
 		int spy_id = -2;
 	};
 	Threat* sThreat;
@@ -89,10 +91,11 @@ public:
 
 	struct PacketMove
 	{
-		float ComputeNodePath(AActor* source, AActor* target);
-		bool iden;
+		float ComputeNodePath(AActor* source, AActor* target, ALink* _link);
+		bool iden = false;
 		std::vector<FVector> path;
 		std::vector<FVector>::iterator it_path;
+		ALink* link = nullptr;
 	};
 	PacketMove* sPacketMove;
 
