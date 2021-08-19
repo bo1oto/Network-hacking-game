@@ -21,7 +21,7 @@ enum Politic
 {
 	OnlyAllowed = 0,
 	NotForbidden
-	//Something more maybe
+	//Maybe more later
 };
 UENUM(BlueprintType)
 enum NodeState
@@ -49,6 +49,9 @@ public:
 	FString GetInfo();
 	UFUNCTION(BlueprintCallable, Category = "Nodes")
 	FText GetTypeInfo();
+	FString GetStateInfo();
+	UFUNCTION(BlueprintCallable)
+	TArray<FText> GetKeyParameters();
 
 	UPROPERTY(BlueprintReadOnly)
 	TEnumAsByte<NodeState> nodeState;
@@ -56,7 +59,7 @@ private:
 	short workload = 0;
 
 protected:
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 
 	static bool IsAlarm;
 	static Politic politic;
@@ -67,18 +70,18 @@ protected:
 	static int killChance;
 
 	void SendAlarmPacket();
+
 	inline void AddWorkload(short quantity);
-
-	virtual void GeneratePacket(int chance);
-
 	void AddWorkloadWithDelay(short _add_work, float delay_time);
+	virtual void GeneratePacket(int chance);
 public:	
 	// Called every frame
-	void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) override;
+
 
 	struct Protection final
 	{
-		int size;//Future feature
+		int size;
 		bool spamFilter = false, isOn = true, behaviorAnalizer = false;
 		std::vector<Signature> threatSigns;
 		bool SignatureCheck(APacket* packet);
@@ -86,9 +89,12 @@ public:
 	};
 	Protection* sProtection;
 
+	UPROPERTY(BlueprintReadOnly)
 	int vlan = 0;
+	UPROPERTY(BlueprintReadOnly)
 	int id;
 	NodeType nodeType;
+
 
 	struct NodeLink final
 	{
@@ -125,6 +131,7 @@ private:
 	{
 		FTimerHandle spyTimer;
 		int stolen_key_info = 0;
+		std::vector<short> stolen_roots;
 		int spy_id = -2;
 	};
 	SpyInfo* sSpyInfo;
@@ -133,6 +140,7 @@ public:
 	struct Information
 	{
 		std::vector<ANodeBase*> vec_net_id;
+		std::vector<short> vec_roots;
 		short key_info_count = 0;
 	};
 	Information* sInformation;
@@ -141,6 +149,8 @@ public:
 	void AddInformation(ANodeBase* node_ptr);
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddKeyInfo();
+	UFUNCTION(BlueprintCallable, Category = "GameRules")
+	void AddRoots(int root_id);
 	UFUNCTION(BlueprintCallable)
 	bool ContainInfo();
 };
