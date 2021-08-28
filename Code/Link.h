@@ -21,14 +21,14 @@ public:
 	ALink();
 
 protected:
-	virtual void BeginPlay() override;
+	virtual void BeginPlay() final;
 
 public:	
-	virtual void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) final;
 
 	UFUNCTION(BlueprintCallable)
-	TArray<FText> GetKeyParameters();
-	FText GetTypeInfo();
+	TArray<FText> GetKeyParameters() const;
+	FText GetTypeInfo() const;
 	UPROPERTY(BlueprintReadWrite)
 	bool isAlive = true;
 	UPROPERTY(BlueprintReadWrite)
