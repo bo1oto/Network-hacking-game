@@ -8,7 +8,7 @@
 #include "Widget_Manager.generated.h"
 
 USTRUCT(BlueprintType)
-struct FNodeInfo final
+struct FNodeInfo
 {
 	GENERATED_BODY()
 
