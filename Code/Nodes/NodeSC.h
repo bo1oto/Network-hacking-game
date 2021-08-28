@@ -13,13 +13,6 @@ class UNCRUSHABLE_API ANodeSC : public ANodeBase
 {
 	GENERATED_BODY()
 	
-public:
-	ANodeSC();
-	void BeginPlay() final;
-	void Tick(float DeltaTime) final;
-
-	static int id_counter;//SC - 30-49
-private:
 	bool have_recovery_system = false;
 	FTimerHandle helpTimer;
 
@@ -27,11 +20,17 @@ private:
 	void GeneratePacket(int chance) final;
 
 	void SaveThisWorld();
-	struct ApocalypseRescueKit
+	struct ApocalypseRescueKit final
 	{
 		int list_size = 0;
-		std::list<std::tuple<FTimerHandle*, bool>> list_apocalypse_timers;
+		std::list<std::pair<FTimerHandle*, bool>> list_apocalypse_timers;
 		std::map<short, int> map_id_vec;
 	};
 	ApocalypseRescueKit* sApocalypseRescueKit;
+public:
+	ANodeSC();
+	void BeginPlay() final;
+	void Tick(float DeltaTime) final;
+
+	static int id_counter;//SC - 30-49
 };
