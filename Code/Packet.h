@@ -91,11 +91,11 @@ public:
 
 	struct PacketMove final
 	{
-		float ComputeNodePath(const AActor* source, const AActor* target, ALink* _link);
+		float ComputeNodePath(const AActor* source, const AActor* target, const ALink* _link);
 		bool iden = false;
 		std::vector<FVector> path;
 		std::vector<FVector>::iterator it_path;
-		ALink* link = nullptr;
+		const ALink* link = nullptr;
 	};
 	PacketMove* sPacketMove;
 
