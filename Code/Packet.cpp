@@ -43,7 +43,7 @@ void APacket::FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam
 	helpMat = help;
 }
 
-float APacket::PacketMove::ComputeNodePath(AActor* source, AActor* target, ALink* _link)
+float APacket::PacketMove::ComputeNodePath(const AActor* source, const AActor* target, const ALink* _link)
 {
 	float speed = 4 * _link->speed_coef;
 	link = _link;
