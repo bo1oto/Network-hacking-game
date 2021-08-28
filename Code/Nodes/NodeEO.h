@@ -10,12 +10,10 @@ class UNCRUSHABLE_API ANodeEO : public ANodeBase
 {
 	GENERATED_BODY()
 
+	void AcceptPacket(APacket* packet) final;
 public:
 	ANodeEO();
 	void BeginPlay() final;
 
-	static int id_counter;//EO - 0-5
-private:
-	void AcceptPacket(APacket* packet) final;
-	
+	static int id_counter;//EO - 0-5	
 };
