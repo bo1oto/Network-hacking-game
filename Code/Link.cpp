@@ -5,19 +5,17 @@ ALink::ALink()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	particleSystem = CreateDefaultSubobject<UParticleSystemComponent>("PS_Link");
-
 }
 void ALink::BeginPlay()
 {
 	Super::BeginPlay();
-	isAlive = true;
 }
 void ALink::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-TArray<FText> ALink::GetKeyParameters()
+TArray<FText> ALink::GetKeyParameters() const
 {
 	// link type, loading, interference_immunity, state
 	TArray<FText> arr;
@@ -30,7 +28,7 @@ TArray<FText> ALink::GetKeyParameters()
 		arr.Add(FText::FromString(TEXT("Dead")));
 	return arr;
 }
-FText ALink::GetTypeInfo()
+FText ALink::GetTypeInfo() const
 {
 	switch (linkType)
 	{
