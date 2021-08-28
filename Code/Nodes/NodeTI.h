@@ -14,7 +14,7 @@ class UNCRUSHABLE_API ANodeTI : public ANodeBase
 
 	struct Routing final
 	{
-		Routing(int vlan_num, std::vector<int> vec = {});
+		Routing(int vlan_num);
 		int vlan;
 		std::vector<int> id_numbers;
 	};
@@ -22,7 +22,7 @@ class UNCRUSHABLE_API ANodeTI : public ANodeBase
 	
 	UFUNCTION(BlueprintCallable)
 	void CreateVLAN(ANodeTI* node);
-	void FillVLAN(std::vector<int>* id_vec, int vlan_num);
+	void FillVLAN(std::vector<int>& id_vec, int vlan_num);
 	
 	void AcceptPacket(APacket* packet) final;
 public:
