@@ -70,7 +70,7 @@ void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNo
 	targetNode->nodeLinks.push_back(new NodeLink{ _link, sourceNode });
 }
 
-TArray<FText> ANodeBase::GetKeyParameters()
+TArray<FText> ANodeBase::GetKeyParameters() const
 {
 	// node type, id + vlan, workload, state
 	TArray<FText> arr;
@@ -80,12 +80,12 @@ TArray<FText> ANodeBase::GetKeyParameters()
 	arr.Add(FText::FromString(GetStateInfo()));
 	return arr;
 }
-FString ANodeBase::GetInfo()
+FString ANodeBase::GetInfo() const
 {
 	FString str = TEXT("id: ") + FString::FromInt(id) + "\n" + TEXT("vlan: ") + FString::FromInt(vlan) + "\n" + TEXT("workload: ") + FString::FromInt(workload);
 	return str;
 }
-FText ANodeBase::GetTypeInfo()
+FText ANodeBase::GetTypeInfo() const
 {
 	switch (nodeType)
 	{
@@ -97,7 +97,7 @@ FText ANodeBase::GetTypeInfo()
 	default: return FText::FromString(TEXT("WUT!?"));
 	}
 }
-FString ANodeBase::GetStateInfo()
+FString ANodeBase::GetStateInfo() const
 {
 	switch (nodeState)
 	{
@@ -134,8 +134,12 @@ void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0
 		AddWorkload(-_add_work);
 	}, 1.0f, false, delay_time);
 }
+//empty
+void ANodeBase::GeneratePacket(int chance)
+{
+}
 
-std::vector<ANodeBase*> ANodeBase::ComputeNodePath(ANodeBase* sender, int _id, int counter)
+std::vector<ANodeBase*> ANodeBase::ComputeNodePath(const ANodeBase* sender, int _id, int counter)
 {
 	if (this->id != _id)
 	{
@@ -162,7 +166,7 @@ std::vector<ANodeBase*> ANodeBase::ComputeNodePath(ANodeBase* sender, int _id, i
 	}
 	return {};
 }
-int ANodeBase::FindRouter(int _vlan, int counter)
+int ANodeBase::FindRouter(int _vlan, int counter) const
 {
 	for (auto node : nodeLinks)
 	{
@@ -178,7 +182,7 @@ int ANodeBase::FindRouter(int _vlan, int counter)
 	}
 	return -1;
 }
-ANodeBase* ANodeBase::CheckNeighbour(int node_id)
+ANodeBase* ANodeBase::CheckNeighbour(int node_id) const
 {
 	for (auto nodeLink : nodeLinks)
 	{
@@ -186,13 +190,12 @@ ANodeBase* ANodeBase::CheckNeighbour(int node_id)
 	}
 	return nullptr;
 }
-ANodeBase* ANodeBase::CheckNeighbour(NodeType _nodeType)
+ANodeBase* ANodeBase::CheckNeighbour(NodeType _nodeType) const
 {
 	for (auto nodeLink : nodeLinks)
 	{
 		if (nodeLink->targetNode->nodeType == _nodeType)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Node (by type) is neighbour");
 			return nodeLink->targetNode;
 		}
 	}
@@ -213,11 +216,7 @@ std::vector<ANodeBase*>* ANodeBase::DeterminePath(int node_id)
 		break;
 	case -2: return nullptr;
 	}
-	if (fast_bolv)
-	{
-		nodes = new std::vector<ANodeBase*>{ this, fast_bolv };
-		return nodes;
-	}
+	if (fast_bolv) return new std::vector<ANodeBase*>{ this, fast_bolv };
 
 	std::vector<ANodeBase*> bolv;
 	int router_id = FindRouter(vlan);
@@ -225,7 +224,7 @@ std::vector<ANodeBase*>* ANodeBase::DeterminePath(int node_id)
 	{
 		bolv = ComputeNodePath(this, router_id);
 		nodes = new std::vector<ANodeBase*>;
-		for (std::vector<ANodeBase*>::reverse_iterator it = bolv.rbegin(); it != bolv.rend(); it++)
+		for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
 		{
 			(*nodes).push_back(*it);
 		}
@@ -253,26 +252,29 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::v
 		AcceptPacket(packet);
 		return;
 	}
+	
 	ALink* link = nullptr;
 	for (auto nodeLink : (*it)->nodeLinks)
 	{
 		if (nodeLink->targetNode == *(it + 1))
 		{
 			link = nodeLink->link;
+			if ((!(*it)->IsHidden() || !(*(it + 1))->IsHidden()) && !link->IsHidden())
+			{
+				packet->SetActorHiddenInGame(false);
+			}
+			else
+			{
+				packet->SetActorHiddenInGame(true);
+			}
+			break;
 		}
 	}
-	if ((!(*it)->IsHidden() || !(*(it + 1))->IsHidden()) && !link->IsHidden())
-	{
-		packet->SetActorHiddenInGame(false);
-	}
-	else
-	{
-		packet->SetActorHiddenInGame(true);
-	}
+	
 	float time = packet->sPacketMove->ComputeNodePath(*it, *(it + 1), link);
 	link->AddWorkloadWithDelay(packet->size, time);
 	*it = nullptr;
-	it++;
+	++it;
 	FTimerHandle timer = FTimerHandle();
 	GetWorldTimerManager().SetTimer(timer, [packet, vec, it, link]
 	{
@@ -289,6 +291,7 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 		packet->Destroy();
 		return;
 	}
+	
 	short add_work = 0;
 	float delay_time = 0.0f;
 	if (sProtection && sProtection->isOn)
@@ -322,13 +325,13 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::
 		delay_time += 1.0f;
 		if (packet->packetType == PacketType::Informative)
 		{
-			if (packet->sInformation->key_info_count)
-				this->sSpyInfo->stolen_key_info += packet->sInformation->key_info_count;
+			if (packet->sInformation->key_info_count) sSpyInfo->stolen_key_info += packet->sInformation->key_info_count;
 			if (!packet->sInformation->roots_for_id.empty())
-				this->sSpyInfo->stolen_roots.insert(
-					this->sSpyInfo->stolen_roots.end(), packet->sInformation->roots_for_id.begin(), packet->sInformation->roots_for_id.end());
+				sSpyInfo->stolen_roots.insert(
+					sSpyInfo->stolen_roots.end(), packet->sInformation->roots_for_id.begin(), packet->sInformation->roots_for_id.end());
 		}
 	}
+	
 	if (it != vec->end() - 1)
 	{
 		AddWorkloadWithDelay(add_work, delay_time);
@@ -362,6 +365,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			goto finish_acceptance;
 		}
 	}
+	
 	switch (packet->packetType)
 	{
 		case PacketType::AttackSpam:
@@ -429,6 +433,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured by roots!");
 				goto finish_acceptance;
 			}
+			
 			AddWorkload(15);
 			float brutforse_time;
 			short* counter = new short(0);
@@ -578,7 +583,7 @@ void ANodeBase::SendAlarmPacket()
 	}
 }
 
-bool ANodeBase::Protection::SignatureCheck(APacket* packet)
+bool ANodeBase::Protection::SignatureCheck(const APacket* packet) const
 {
 	auto signCheck = [](Signature sign_1, Signature sign_2) -> bool
 	{
@@ -601,7 +606,7 @@ bool ANodeBase::Protection::SignatureCheck(APacket* packet)
 	return false;
 }
 
-int ANodeBase::Protection::SourceTargetCheck(APacket* packet)
+int ANodeBase::Protection::SourceTargetCheck(const APacket* packet) const
 {
 	/*
 	* 0 - Deny
@@ -622,19 +627,6 @@ int ANodeBase::Protection::SourceTargetCheck(APacket* packet)
 		return 1;
 	}
 	return 1;
-}
-
-void ANodeBase::GeneratePacket(int chance)
-{
-}
-
-void ANodeBase::FillPacketTemp(TSubclassOf<APacket> temp)
-{
-	packetTemp = temp;
-}
-void ANodeBase::SetVLAN(int num)
-{
-	vlan = num;
 }
 
 void ANodeBase::AddInformation(ANodeBase* node_ptr)
@@ -695,3 +687,11 @@ bool ANodeBase::ContainInfo()
 	if (sInformation != nullptr) return true; else return false;
 }
 
+void ANodeBase::FillPacketTemp(TSubclassOf<APacket> temp)
+{
+	packetTemp = temp;
+}
+void ANodeBase::SetVLAN(int num)
+{
+	vlan = num;
+}
