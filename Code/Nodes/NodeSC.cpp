@@ -39,9 +39,9 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				int item_num = sApocalypseRescueKit->map_id_vec[packet->source_id];
 				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
 				std::advance(it, item_num);
-				GetWorldTimerManager().ClearTimer(*std::get<0>(*it));
-				delete std::get<0>(*it);
-				std::get<0>(*it) = nullptr;
+				GetWorldTimerManager().ClearTimer(*(*it).first);
+				delete (*it).first;
+				(*it).first = nullptr;
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Help for " + FString::FromInt(packet->source_id) + " successful!");
 
 				AddWorkloadWithDelay(5, 2.0f);
@@ -53,7 +53,7 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				int item_num = sApocalypseRescueKit->map_id_vec[packet->source_id];
 				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
 				std::advance(it, item_num);
-				std::get<1>(*it) = true;
+				(*it).second = true;
 				AddWorkloadWithDelay(5, 2.0f);
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Help for " + FString::FromInt(packet->source_id) + " failed!");
 
@@ -104,15 +104,16 @@ void ANodeSC::SaveThisWorld()
 			packet->sHelper->helpState = APacket::Helper::HelpState::Healer;
 
 			FTimerHandle* timer = new FTimerHandle();
-			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::tuple<FTimerHandle*, bool>{timer, false});
+			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::make_pair(timer, false));
 			sApocalypseRescueKit->map_id_vec.insert({ _i, sApocalypseRescueKit->list_size });
 
 			//The timer starts, if there is no response, then the killers start spamming
 			GetWorldTimerManager().SetTimer(*timer, [this, _id = _i, vec_num = sApocalypseRescueKit->list_size, path = *nodes]
 			{
+				//Так как путь статичен, я копирую в стэк вектор узлов, а уже из него создаю копию в куче и указатель на неё
 				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
 				std::advance(it, vec_num);
-				if (std::get<1>(*it))
+				if ((*it).second)
 				{
 					std::vector<ANodeBase*>* nodes = new std::vector<ANodeBase*>{ path };
 					APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
@@ -127,7 +128,7 @@ void ANodeSC::SaveThisWorld()
 					FTimerHandle timer = FTimerHandle();
 					GetWorldTimerManager().SetTimer(timer, [it]
 					{
-						std::get<1>(*it) = true;
+						(*it).second = true;
 					}, 1.0f, false, 30.0f);
 				}
 				
