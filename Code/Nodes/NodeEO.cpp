@@ -24,6 +24,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
+		
 		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 		if (!packet->sInformation->roots_for_id.empty())
 		{
