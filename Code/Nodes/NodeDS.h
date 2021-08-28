@@ -17,5 +17,4 @@ public:
 	void AcceptPacket(APacket* packet) final;
 
 	static int id_counter;//DS - 50-69
-private:
 };
