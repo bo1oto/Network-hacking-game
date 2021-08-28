@@ -10,6 +10,7 @@ class UNCRUSHABLE_API ANodePC : public ANodeBase
 {
 	GENERATED_BODY()
 	
+	void AcceptPacket(APacket* packet) final;
 public:
 	ANodePC();
 	void BeginPlay() final;
@@ -19,7 +20,4 @@ public:
 	static int id_counter;//PC - 70-89
 
 	void GeneratePacket(int chance) final;
-private:
-
-	void AcceptPacket(APacket* packet) final;
 };
