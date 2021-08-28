@@ -25,17 +25,6 @@ FNodeInfo::FNodeInfo(ANodeBase* _node_ptr)
 	isFullInfo = true;
 	node_ptr->Mesh->SetMaterial(0, node_ptr->main_mat);
 	characteristic = UWidget_Manager::FillNodeCharacteristic(_node_ptr);
-
-}
-
-void UWidget_Manager::AddKeyInfo(short quantity)
-{
-	key_info_counter += quantity;
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Key info progress: " + FString::FromInt(key_info_counter) + "/20 !");
-	if (key_info_counter >= 20)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation!");
-	}
 }
 
 void UWidget_Manager::SetSelfRef(UWidget_Manager* _self_ref)
@@ -63,7 +52,7 @@ void UWidget_Manager::StartGame()
 	isGameStart = true;
 }
 
-FString UWidget_Manager::FillNodeCharacteristic(ANodeBase* node_ptr)
+FString UWidget_Manager::FillNodeCharacteristic(const ANodeBase* node_ptr)
 {
 	FString str = "Type: ";
 	switch (node_ptr->nodeType)
@@ -102,6 +91,15 @@ FString UWidget_Manager::FillNodeCharacteristic(ANodeBase* node_ptr)
 	return str;
 }
 
+void UWidget_Manager::AddKeyInfo(short quantity)
+{
+	key_info_counter += quantity;
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Key info progress: " + FString::FromInt(key_info_counter) + "/20 !");
+	if (key_info_counter >= 20)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation!");
+	}
+}
 void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool asID)
 {
 	auto f = [node_ptr](const FNodeInfo &node_info) -> bool
