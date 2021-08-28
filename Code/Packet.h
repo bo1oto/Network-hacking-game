@@ -35,10 +35,10 @@ class UNCRUSHABLE_API APacket : public AActor
 	GENERATED_BODY()
 
 public:
-	virtual void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) final;
 	APacket();
 protected:
-	virtual void BeginPlay() override;
+	virtual void BeginPlay() final;
 
 
 public:
@@ -50,7 +50,7 @@ public:
 	int size;
 	short source_id = -2, target_id = -2;
 	PacketType packetType;
-	struct Helper
+	struct Helper final
 	{
 		enum HelpState
 		{
@@ -65,7 +65,7 @@ public:
 		bool isAlarm = false;
 	};
 	Helper* sHelper;
-	struct Information
+	struct Information final
 	{
 		bool isDSRequest = false;
 		short key_info_count = 0;
@@ -73,7 +73,7 @@ public:
 		AActor* for_spy_ref = nullptr;
 	};
 	Information* sInformation;
-	struct Threat
+	struct Threat final
 	{
 		Signature sign = Signature::NotSign;
 		bool have_root = false;
@@ -89,9 +89,9 @@ public:
 	static UMaterialInterface* infoMat;
 	static UMaterialInterface* helpMat;
 
-	struct PacketMove
+	struct PacketMove final
 	{
-		float ComputeNodePath(AActor* source, AActor* target, ALink* _link);
+		float ComputeNodePath(const AActor* source, const AActor* target, const ALink* _link);
 		bool iden = false;
 		std::vector<FVector> path;
 		std::vector<FVector>::iterator it_path;
