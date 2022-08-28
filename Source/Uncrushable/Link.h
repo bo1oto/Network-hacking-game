@@ -6,7 +6,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Link.generated.h"
 
-enum LinkType
+enum class ELinkType : uint8
 {
 	TwistedPair,
 	OpticalFiber
@@ -33,7 +33,7 @@ public:
 	bool isAlive = true;
 	UPROPERTY(BlueprintReadWrite)
 	int max_length;
-	LinkType linkType;
+	ELinkType linkType;
 
 	float speed_coef;
 	short current_load = 0;
@@ -44,7 +44,7 @@ public:
 	void AddWorkloadWithDelay(short _add_work, float delay_time);
 
 	UFUNCTION(BlueprintCallable)
-	void SetLinkType(int num);
+	void SetLinkType(uint8 num);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UParticleSystemComponent* particleSystem;

@@ -24,7 +24,7 @@ class UNCRUSHABLE_API ANodeSC : public ANodeBase
 	{
 		int list_size = 0;
 		std::list<std::pair<FTimerHandle*, bool>> list_apocalypse_timers;
-		std::map<short, int> map_id_vec;
+		std::map<short, int> map_id_pos;
 	};
 	ApocalypseRescueKit* sApocalypseRescueKit;
 public:

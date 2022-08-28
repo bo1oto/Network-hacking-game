@@ -20,15 +20,16 @@ void ANodeDS::BeginPlay()
 
 void ANodeDS::AcceptPacket(APacket* packet)
 {
-	if (packet->packetType == PacketType::Informative && packet->sInformation->isDSRequest)
+	if (packet->packetType == EPacketType::Informative && packet->sInformation->isDSRequest)
 	{
-		std::vector<ANodeBase*>* nodes = DeterminePath(packet->source_id);
-		if (nodes && !(*nodes).empty())
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(packet->source_id, nodes);
+		if (!nodes.empty())
 		{
 			APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			_packet->InitPacket(PacketType::Informative, this->id, packet->source_id);
-			_packet->sInformation->key_info_count = 1;
-			SendPacket(_packet, nodes, (*nodes).begin());
+			_packet->InitPacket(EPacketType::Informative, this->id, packet->source_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			packet->sInformation = new APacket::Information(false, 1, {}, nullptr);
+			SendPacket(_packet, _packet->path.begin());
 		}
 	}
 	ANodeBase::AcceptPacket(packet);

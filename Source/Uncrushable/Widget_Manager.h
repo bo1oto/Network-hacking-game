@@ -24,7 +24,7 @@ public:
 	ANodeBase* node_ptr;
 	UPROPERTY(BlueprintReadOnly)
 	FString characteristic;
-	bool isFullInfo;
+	bool bIsFullInfo;
 };
 
 UCLASS()
@@ -54,22 +54,26 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	static void SetSelfRef(UWidget_Manager* _self_ref);
+
 	UFUNCTION(BlueprintCallable)
 	void StartGame();
 
-	static FString FillNodeCharacteristic(const ANodeBase* node_ptr);
+	static FString FillNodeCharacteristic(const ANodeBase& node_ptr);
 	
 	UFUNCTION(BlueprintCallable)
-	void AddNodeInfo(ANodeBase* node_ptr, bool asID);
-	void AddKeyInfo(short quantity);
+	void AddNodeInfo(ANodeBase* node_ptr, bool bAsID);
+
+	void AddKeyInfo(int quantity);
 
 	UPROPERTY(BlueprintReadWrite)
 	TArray<	FNodeInfo> known_nodes = {};
 
 	UFUNCTION(BlueprintCallable)
 	void InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id);
+
 	UFUNCTION(BlueprintCallable)
 	void InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
+
 	UFUNCTION(BlueprintCallable)
 	void InitInformative(int target_node_id, ANodeBase* source_node, int spoof_id);
 };

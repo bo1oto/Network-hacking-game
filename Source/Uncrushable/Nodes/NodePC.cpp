@@ -17,12 +17,12 @@ void ANodePC::BeginPlay()
 	AddWorkload(30);
 	nodeType = NodeType::PersonalComputer;
 	id = id_counter;
-	id_counter++;
+	++id_counter;
 }
 
 void ANodePC::AcceptPacket(APacket* packet)
 {
-	if (have_phys_connection && nodeState == NodeState::Captured && packet->packetType == PacketType::Simple 
+	if (have_phys_connection && nodeState == NodeState::Captured && packet->packetType == EPacketType::Simple 
 		&& packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
@@ -67,24 +67,35 @@ void ANodePC::GeneratePacket(int chance)
 	* 85-92.5: informative for PC/DS (contain roots for PC/DS/TI)
 	* 92.5-100: packet-request for DS, that return informative packet with key info
 	*/
-	if (chance < 60) return;
+	if (chance < 60)
+	{
+		return;
+	}
 	else if (chance >= 60 && chance < 85)
 	{
-		if (ANodeEO::id_counter == 0) return;
-		if (ANodePC::id_counter == 70) return;
+		if (ANodeEO::id_counter == 0 || ANodePC::id_counter == 70)
+		{
+			return;
+		}
+
 		int _id = -2;
 		switch (std::rand() % (2))
 		{
-		case 0: _id = generate_PC_ID(); break; //PC
-		case 1: _id = std::rand() % (ANodeEO::id_counter); break; //EO
+		case 0: //PC
+			_id = generate_PC_ID(); 
+			break; 
+		case 1: //EO
+			_id = std::rand() % ANodeEO::id_counter;
+			break; 
 		}
 
-		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
-		if (nodes && !(*nodes).empty())
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(_id, nodes);
+		if (!nodes.empty())
 		{
 			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(PacketType::Simple, this->id, _id);
-			SendPacket(packet, nodes, (*nodes).begin());
+			packet->InitPacket(EPacketType::Simple, this->id, _id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			SendPacket(packet, packet->path.begin());
 		}
 	}
 	else if (chance >= 85 && chance < 92.5)
@@ -98,32 +109,36 @@ void ANodePC::GeneratePacket(int chance)
 		case 1: _id = 50 + std::rand() % (ANodeDS::id_counter - 50); break; //DS
 		}
 
-		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
-		if (nodes && !(*nodes).empty())
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(_id, nodes);
+		if (!nodes.empty())
 		{
 			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(PacketType::Informative, this->id, _id);
-			switch (std::rand() % (3))
+			packet->InitPacket(EPacketType::Informative, this->id, _id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			packet->sInformation = new APacket::Information(false, 0, {}, nullptr);
+			switch (std::rand() % 3)
 			{
 			case 0: packet->sInformation->roots_for_id.push_back(70 + std::rand() % (ANodePC::id_counter - 70)); break; //Root PC
 			case 1: packet->sInformation->roots_for_id.push_back(50 + std::rand() % (ANodeDS::id_counter - 50)); break; //Root DS
 			case 2: packet->sInformation->roots_for_id.push_back(10 + std::rand() % (ANodeTI::id_counter - 10)); break; //Root TI
 			}
-			SendPacket(packet, nodes, (*nodes).begin());
+			SendPacket(packet, packet->path.begin());
 		}
 	}
 	else if (chance >= 92.5)
 	{
 		if (ANodeDS::id_counter == 50) return;
+
 		int _id = 50 + std::rand() % (ANodeDS::id_counter - 50);
 
-		std::vector<ANodeBase*>* nodes = DeterminePath(_id);
-		if (nodes && !(*nodes).empty())
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(_id, nodes);
+		if (!nodes.empty())
 		{
 			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(PacketType::Informative, this->id, _id);
-			packet->sInformation->isDSRequest = true;
-			SendPacket(packet, nodes, (*nodes).begin());
+			packet->InitPacket(EPacketType::Informative, this->id, _id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			packet->sInformation = new APacket::Information(true, 0, {}, nullptr);
+			SendPacket(packet, packet->path.begin());
 		}
 	}
 }

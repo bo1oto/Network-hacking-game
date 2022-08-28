@@ -11,7 +11,7 @@
 #include "Packet.generated.h"
 
 
-enum Signature
+enum class Signature : uint8
 {
 	Spy_1 = 0,
 	Spy_2,
@@ -21,7 +21,8 @@ enum Signature
 	Crash_2,
 	NotSign
 };
-enum PacketType
+
+enum class EPacketType : uint8
 {
 	AttackSpam = 0,
 	AttackCapture,
@@ -48,14 +49,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UStaticMeshComponent* Mesh;
 
-	void InitPacket(PacketType _packetType, short _sourceId, short _targetId);
+	void InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::vector<AActor*> _path);
 	
 	int size;
 	short source_id = -2, target_id = -2;
-	PacketType packetType;
+	EPacketType packetType;
+	std::vector<AActor*> path;
+
 	struct Helper final
 	{
-		enum HelpState
+		enum class EHelpState : uint8
 		{
 			Killer = 0,
 			Healer,
@@ -63,25 +66,28 @@ public:
 			DefeatReport,
 			Prevention
 		};
-		HelpState helpState;
+		EHelpState helpState;
 		std::vector<Signature> sign;
 		bool isAlarm = false;
 	};
-	Helper* sHelper;
 	struct Information final
 	{
+		Information() = delete;
+		Information(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref);
 		bool isDSRequest = false;
-		short key_info_count = 0;
-		std::vector<short> roots_for_id;
+		uint8 key_info_count = 0;
+		std::vector<uint8> roots_for_id;
 		AActor* for_spy_ref = nullptr;
 	};
-	Information* sInformation;
 	struct Threat final
 	{
 		Signature sign = Signature::NotSign;
 		bool have_root = false;
 		int spy_id = -2;
 	};
+
+	Helper* sHelper;
+	Information* sInformation;
 	Threat* sThreat;
 
 	UFUNCTION(BlueprintCallable)
@@ -92,14 +98,14 @@ public:
 	static UMaterialInterface* infoMat;
 	static UMaterialInterface* helpMat;
 
-	struct PacketMove final
+	struct FPacketMove final
 	{
-		float ComputeNodePath(const AActor* source, const AActor* target, const ALink* _link);
+		float ComputeNodePath(const AActor& source, const AActor& target, const ALink* _link);
 		bool iden = false;
 		std::vector<FVector> path;
 		std::vector<FVector>::iterator it_path;
 		const ALink* link = nullptr;
 	};
-	PacketMove* sPacketMove;
+	FPacketMove* sPacketMove;
 
 };

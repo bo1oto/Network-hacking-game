@@ -32,8 +32,8 @@ FText ALink::GetTypeInfo() const
 {
 	switch (linkType)
 	{
-	case LinkType::TwistedPair: return FText::FromString(TEXT("TwistedPair")); break;
-	case LinkType::OpticalFiber: return FText::FromString(TEXT("OpticalFiber")); break;
+	case ELinkType::TwistedPair: return FText::FromString(TEXT("TwistedPair")); break;
+	case ELinkType::OpticalFiber: return FText::FromString(TEXT("OpticalFiber")); break;
 	default: return FText::FromString(TEXT("WUT!?"));
 	}
 }
@@ -63,19 +63,19 @@ void ALink::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
 	}, 1.0f, false, delay_time);
 }
 
-void ALink::SetLinkType(int num)
+void ALink::SetLinkType(uint8 num)
 {
 	switch (num)
 	{
 	case 0: 
-		linkType = LinkType::TwistedPair;
+		linkType = ELinkType::TwistedPair;
 		speed_coef = 0.75f;
 		max_load = 100;
 		interference_immunity = 30;
 		max_length = 750;
 	break;
 	case 1: 
-		linkType = LinkType::OpticalFiber;
+		linkType = ELinkType::OpticalFiber;
 		speed_coef = 1.25f;
 		max_load = 80;
 		interference_immunity = 10;
@@ -83,4 +83,3 @@ void ALink::SetLinkType(int num)
 		break;
 	}
 }
-

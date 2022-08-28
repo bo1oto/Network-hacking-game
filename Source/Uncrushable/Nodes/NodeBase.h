@@ -11,7 +11,7 @@
 
 #include "NodeBase.generated.h"
 
-enum NodeType
+enum class NodeType : uint8
 {
 	DataStorage = 0,
 	Security,
@@ -19,12 +19,14 @@ enum NodeType
 	PersonalComputer,
 	ExternalOutput
 };
-enum Politic
+
+enum class EPolitic : uint8
 {
 	OnlyAllowed = 0,
 	NotForbidden
 	//Maybe more later
 };
+
 UENUM(BlueprintType)
 enum NodeState
 {
@@ -39,22 +41,26 @@ class UNCRUSHABLE_API ANodeBase : public AActor
 {
 	GENERATED_BODY()
 
-	short workload = 0;
+protected:
+	virtual void BeginPlay() override;
+public:
+	void Tick(float DeltaTime) override;
 
-	struct SpyInfo final
+private:
+	int workload = 0;
+
+	struct FSpyInfo final
 	{
 		FTimerHandle spyTimer;
 		int stolen_key_info = 0;
 		std::vector<short> stolen_roots;
 		int spy_id = -2;
 	};
-	SpyInfo* sSpyInfo;
+	FSpyInfo* sSpyInfo;
 
 protected:
-	virtual void BeginPlay() override;
-
 	static bool IsAlarm;
-	static Politic politic;
+	static EPolitic politic;
 	static int sameSignChance;
 	static int upSignChance;
 	static int behaviorChance;
@@ -63,43 +69,36 @@ protected:
 
 	void SendAlarmPacket();
 
-	inline void AddWorkload(short quantity);
+	inline void AddWorkload(int quantity);
+
 	void AddWorkloadWithDelay(short _add_work, float delay_time);
+
 	virtual void GeneratePacket(int chance);
-public:	
-	// Called every frame
-	void Tick(float DeltaTime) override;
+
+public:
 	ANodeBase();
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Graphics")
-	UStaticMeshComponent* Mesh;
-
-	UFUNCTION(BlueprintCallable, Category = "Link")
-	static void AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode);
-
-	UFUNCTION(BlueprintCallable, Category = "Information")
-	FString GetInfo() const;
-	UFUNCTION(BlueprintCallable, Category = "Information")
-	FText GetTypeInfo() const;
-	FString GetStateInfo() const;
-	UFUNCTION(BlueprintCallable, Category = "Information")
-	TArray<FText> GetKeyParameters() const;
 
 	UPROPERTY(BlueprintReadOnly)
 	TEnumAsByte<NodeState> nodeState;
+
 	UPROPERTY(BlueprintReadOnly)
 	int vlan = 0;
+
 	UPROPERTY(BlueprintReadOnly)
 	int id;
+
 	NodeType nodeType;
 
-	std::vector<ANodeBase*> ComputeNodePath(const ANodeBase* sender, int _id, int counter = 0);
+	void ComputeNodePath(const ANodeBase* sender, int _id, std::vector<ANodeBase*>& path, int counter = 0);
+
 	int FindRouter(int _vlan, int counter = 0) const;
+
 	ANodeBase* CheckNeighbour(int node_id) const;
 	ANodeBase* CheckNeighbour(NodeType _nodeType) const;
-	std::vector<ANodeBase*>* DeterminePath(int node_id);
 
-	struct Protection final
+	void DeterminePath(int node_id, std::vector<ANodeBase*> path);
+
+	struct FProtection final
 	{
 		/* Тогда обычные узлы имеют:
 		*	1. Сигнатурную проверку (туда же входит эвристика) +
@@ -110,45 +109,72 @@ public:
 		*	5. Вроде нормально, но вроде чего-то не хватает
 		*/
 		int size;
-		bool spamFilter = false, isOn = true, behaviorAnalizer = false;
+		bool bSpamFilter = false, bIsOn = true, behaviorAnalizer = false;
 		std::vector<Signature> threatSigns;
-		bool SignatureCheck(const APacket* packet) const;
-		int SourceTargetCheck(const APacket* packet) const;
+		bool SignatureCheck(const APacket& packet) const;
+		int SourceTargetCheck(const APacket& packet) const;
 	};
-	Protection* sProtection;
-	struct NodeLink final
+
+	struct FNodeLink final
 	{
 		ALink* link;
 		ANodeBase* targetNode;
 	};
-	std::vector<NodeLink*> nodeLinks = {};
+
 	struct Information final
 	{
 		std::vector<ANodeBase*> vec_net_id;
 		std::vector<short> vec_roots;
-		short key_info_count = 0;
+		int key_info_count = 0;
 	};
-	Information* sInformation;
 
-	void SendPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it);
-	virtual void CheckPacket(APacket* packet, std::vector<ANodeBase*>* vec, std::vector<ANodeBase*>::iterator it);
+	FProtection* sProtection;
+	Information* sInformation;
+	std::vector<FNodeLink*> nodeLinks = {};
+
+
+	void SendPacket(APacket* packet, std::vector<AActor*>::iterator it);
+	
+	virtual void CheckPacket(APacket* packet, std::vector<AActor*>::iterator it);
+
 	virtual void AcceptPacket(APacket* packet);
 
+	UFUNCTION(BlueprintCallable, Category = "Link")
+	static void AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode);
+
+	UFUNCTION(BlueprintCallable, Category = "Information")
+	FString GetInfo() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Information")
+	FText GetTypeInfo() const;
+	FString GetStateInfo() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Information")
+	TArray<FText> GetKeyParameters() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void SetVLAN(int num);
+
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddInformation(ANodeBase* node_ptr);
+
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddKeyInfo();
+
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddRoots(int root_id);
+
 	UFUNCTION(BlueprintCallable)
 	bool ContainInfo();
 
 	static TSubclassOf<APacket> packetTemp;
+
 	UFUNCTION(BlueprintCallable, Category = "Graphics")
 	static void FillPacketTemp(TSubclassOf<APacket> temp);
+
 	UPROPERTY(BlueprintReadWrite, Category = "Graphics")
 	UMaterialInterface* main_mat;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Graphics")
+	UStaticMeshComponent* Mesh;
 };

@@ -29,42 +29,47 @@ void ANodeTI::AcceptPacket(APacket* packet)
 {
 	if (packet->target_id != id)
 	{
-		if (packet->packetType == PacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && nodeState != NodeState::Captured)
+		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && nodeState != NodeState::Captured)
 		{
 			// Then look for the closest known security node
-			std::vector<ANodeBase*> main, bolv;
+			std::vector<ANodeBase*> main{}, bolv{};
 			for (int i = ANodeSC::id_counter - 1; i >= 30; i--)
 			{
 				if (CheckIDInTable(i))
 				{
-					main = ComputeNodePath(this, i);
-					if (bolv.empty()) bolv = main;
-					else if (main.size() < bolv.size()) bolv = main;
+					ComputeNodePath(this, i, main);
+					if (bolv.empty() || main.size() < bolv.size())
+					{
+						bolv = main;
+					}
 				}
 			}
-			std::vector<ANodeBase*>* nodes = new std::vector<ANodeBase*>;
-			for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
+			if (!bolv.empty())
 			{
-				nodes->push_back(*it);
-			}
-			if (!(*nodes).empty())
-			{
+				std::vector<ANodeBase*> nodes{};
+				for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
+				{
+					nodes.push_back(*it);
+				}
 				packet->target_id = (*bolv.begin())->id;
-				SendPacket(packet, nodes, nodes->begin());
-				goto add_work;
+				packet->path = std::vector<AActor*>(nodes.begin(), nodes.end());
+				SendPacket(packet, packet->path.begin());
 			}
+			goto add_work;
+			
 		}
 		if (CheckIDInTable(packet->target_id))
 		{
-			std::vector<ANodeBase*>* nodes = new std::vector<ANodeBase*>;
-			std::vector<ANodeBase*> bolv = ComputeNodePath(this, packet->target_id);
+			std::vector<ANodeBase*> nodes{}, bolv{};
+			ComputeNodePath(this, packet->target_id, bolv);
 			for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
 			{
-				nodes->push_back(*it);
+				nodes.push_back(*it);
 			}
-			if (!nodes->empty())
+			if (!nodes.empty())
 			{
-				SendPacket(packet, nodes, nodes->begin());
+				packet->path = std::vector<AActor*>(nodes.begin(), nodes.end());
+				SendPacket(packet, packet->path.begin());
 				goto add_work;
 			}
 		}
@@ -84,17 +89,19 @@ void ANodeTI::AcceptPacket(APacket* packet)
 }
 bool ANodeTI::CheckIDInTable(int _id) const
 {
-	auto contain = [](const std::vector<int>& id_vec, int node_id) -> bool
+	auto contains = [](const std::vector<int>& id_vec, int node_id) -> bool
 	{
-		for (auto elem : id_vec)
+		for (const auto& elem : id_vec)
 		{
-			if (elem == node_id) return true;
+			if (elem == node_id) 
+				return true;
 		}
 		return false;
 	};
-	for (auto routes : routingTable)
+	for (const auto& routes : routingTable)
 	{
-		if (contain(routes->id_numbers, _id)) return true;
+		if (contains(routes->id_numbers, _id)) 
+			return true;
 	}
 	return false;
 }

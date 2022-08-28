@@ -21,7 +21,7 @@ void ANodeEO::BeginPlay()
 
 void ANodeEO::AcceptPacket(APacket* packet)
 {
-	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
+	if (nodeState == NodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
 		
@@ -49,7 +49,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 			}
 		}
 	}
-	if (nodeState == NodeState::Captured && packet->packetType == PacketType::Informative && packet->sInformation->key_info_count)
+	if (nodeState == NodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count)
 	{
 		UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 	}
