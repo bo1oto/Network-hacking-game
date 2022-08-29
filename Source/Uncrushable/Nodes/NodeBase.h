@@ -2,16 +2,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include <vector>
+
 #include "Uncrushable/Link.h"
 #include "Uncrushable/Packet.h"
 
 #include "NodeBase.generated.h"
 
-enum class NodeType : uint8
+
+enum class ENodeType : uint8
 {
 	DataStorage = 0,
 	Security,
@@ -28,7 +31,7 @@ enum class EPolitic : uint8
 };
 
 UENUM(BlueprintType)
-enum NodeState
+enum class ENodeState : uint8
 {
 	Working = 0,
 	Offline,
@@ -41,63 +44,7 @@ class UNCRUSHABLE_API ANodeBase : public AActor
 {
 	GENERATED_BODY()
 
-protected:
-	virtual void BeginPlay() override;
 public:
-	void Tick(float DeltaTime) override;
-
-private:
-	int workload = 0;
-
-	struct FSpyInfo final
-	{
-		FTimerHandle spyTimer;
-		int stolen_key_info = 0;
-		std::vector<short> stolen_roots;
-		int spy_id = -2;
-	};
-	FSpyInfo* sSpyInfo;
-
-protected:
-	static bool IsAlarm;
-	static EPolitic politic;
-	static int sameSignChance;
-	static int upSignChance;
-	static int behaviorChance;
-	static int healChance;
-	static int killChance;
-
-	void SendAlarmPacket();
-
-	inline void AddWorkload(int quantity);
-
-	void AddWorkloadWithDelay(short _add_work, float delay_time);
-
-	virtual void GeneratePacket(int chance);
-
-public:
-	ANodeBase();
-
-	UPROPERTY(BlueprintReadOnly)
-	TEnumAsByte<NodeState> nodeState;
-
-	UPROPERTY(BlueprintReadOnly)
-	int vlan = 0;
-
-	UPROPERTY(BlueprintReadOnly)
-	int id;
-
-	NodeType nodeType;
-
-	void ComputeNodePath(const ANodeBase* sender, int _id, std::vector<ANodeBase*>& path, int counter = 0);
-
-	int FindRouter(int _vlan, int counter = 0) const;
-
-	ANodeBase* CheckNeighbour(int node_id) const;
-	ANodeBase* CheckNeighbour(NodeType _nodeType) const;
-
-	void DeterminePath(int node_id, std::vector<ANodeBase*> path);
-
 	struct FProtection final
 	{
 		/* Тогда обычные узлы имеют:
@@ -110,7 +57,7 @@ public:
 		*/
 		int size;
 		bool bSpamFilter = false, bIsOn = true, behaviorAnalizer = false;
-		std::vector<Signature> threatSigns;
+		std::vector<ESignature> threatSigns;
 		bool SignatureCheck(const APacket& packet) const;
 		int SourceTargetCheck(const APacket& packet) const;
 	};
@@ -128,19 +75,52 @@ public:
 		int key_info_count = 0;
 	};
 
-	FProtection* sProtection;
-	Information* sInformation;
-	std::vector<FNodeLink*> nodeLinks = {};
+private:
+	struct FSpyInfo final
+	{
+		FTimerHandle spyTimer;
+		int stolen_key_info = 0;
+		std::vector<short> stolen_roots;
+		int spy_id = -2;
+	};
 
+public:
+	ANodeBase();
+
+	virtual void Tick(float DeltaTime) override;
+
+	void ComputeNodePath(const ANodeBase* sender, int _id, std::vector<ANodeBase*>& path, int counter = 0);
+
+	int FindRouter(int _vlan, int counter = 0) const;
+
+	ANodeBase* CheckNeighbour(int node_id) const;
+	ANodeBase* CheckNeighbour(ENodeType _nodeType) const;
+
+	void DeterminePath(int node_id, std::vector<ANodeBase*>& path);
 
 	void SendPacket(APacket* packet, std::vector<AActor*>::iterator it);
-	
+
+protected:
+	virtual void BeginPlay() override;
+
+	UFUNCTION(BlueprintCallable, Category = "Graphics")
+	static void FillPacketTemp(TSubclassOf<APacket> temp);
+
+	UFUNCTION(BlueprintCallable, Category = "Link")
+	static void AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode);
+
+
+	void SendAlarmPacket();
+
+	inline void AddWorkload(int quantity);
+	void AddWorkloadWithDelay(short _add_work, float delay_time);
+
+	virtual void GeneratePacket(int chance);
+
 	virtual void CheckPacket(APacket* packet, std::vector<AActor*>::iterator it);
 
 	virtual void AcceptPacket(APacket* packet);
 
-	UFUNCTION(BlueprintCallable, Category = "Link")
-	static void AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode);
 
 	UFUNCTION(BlueprintCallable, Category = "Information")
 	FString GetInfo() const;
@@ -167,14 +147,46 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool ContainInfo();
 
+
+public:
 	static TSubclassOf<APacket> packetTemp;
 
-	UFUNCTION(BlueprintCallable, Category = "Graphics")
-	static void FillPacketTemp(TSubclassOf<APacket> temp);
+
+	UPROPERTY(BlueprintReadOnly)
+	TEnumAsByte<ENodeState> eNodeState;
+
+	UPROPERTY(BlueprintReadOnly)
+	int vlan = 0;
+
+	UPROPERTY(BlueprintReadOnly)
+	int id;
+
+	ENodeType eNodeType;
+
+	FProtection* sProtection;
+	Information* sInformation;
+	std::vector<FNodeLink*> nodeLinks = {};
+
 
 	UPROPERTY(BlueprintReadWrite, Category = "Graphics")
 	UMaterialInterface* main_mat;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Graphics")
 	UStaticMeshComponent* Mesh;
+
+
+protected:
+	static bool bIsAlarm;
+	static EPolitic ePolitic;
+	static int sameSignChance;
+	static int upSignChance;
+	static int behaviorChance;
+	static int healChance;
+	static int killChance;
+
+private:
+	int workload = 0;
+
+	FSpyInfo* sSpyInfo;
+
 };

@@ -2,9 +2,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "GameFramework/Actor.h"
 #include "Particles/ParticleSystemComponent.h"
+
 #include "Link.generated.h"
+
 
 enum class ELinkType : uint8
 {
@@ -19,32 +22,40 @@ class UNCRUSHABLE_API ALink : public AActor
 	
 public:	
 	ALink();
+	//copy constructor
+	//= operator
+	//destructor
+
+	virtual void Tick(float DeltaTime) final;
+
+
+	UFUNCTION(BlueprintCallable)
+	void SetLinkType(uint8 num);
+
+	UFUNCTION(BlueprintCallable)
+	inline TArray<FText> GetKeyParameters() const;
+	inline FText GetTypeInfo() const;
+
+	inline void AddWorkload(short quantity, float last_packet_time);
+	void AddWorkloadWithDelay(short _add_work, float delay_time);
 
 protected:
 	virtual void BeginPlay() final;
 
 public:	
-	virtual void Tick(float DeltaTime) final;
 
-	UFUNCTION(BlueprintCallable)
-	TArray<FText> GetKeyParameters() const;
-	FText GetTypeInfo() const;
 	UPROPERTY(BlueprintReadWrite)
-	bool isAlive = true;
+	bool bIsAlive = true;
+
 	UPROPERTY(BlueprintReadWrite)
-	int max_length;
-	ELinkType linkType;
+	int MaxLength;
+
+	ELinkType eLinkType;
 
 	float speed_coef;
 	short current_load = 0;
 	short max_load;
 	short interference_immunity;
-
-	inline void AddWorkload(short quantity, float last_packet_time);
-	void AddWorkloadWithDelay(short _add_work, float delay_time);
-
-	UFUNCTION(BlueprintCallable)
-	void SetLinkType(uint8 num);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UParticleSystemComponent* particleSystem;

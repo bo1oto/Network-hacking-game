@@ -1,8 +1,13 @@
 
+#pragma once
+
 #include "NodeEO.h"
+
 #include "Uncrushable/Widget_Manager.h"
 
+
 int ANodeEO::id_counter = 0;
+
 
 ANodeEO::ANodeEO() : ANodeBase()
 {
@@ -11,8 +16,8 @@ ANodeEO::ANodeEO() : ANodeBase()
 void ANodeEO::BeginPlay()
 {
 	ANodeBase::BeginPlay();
-	nodeType = NodeType::ExternalOutput;
-	nodeState = NodeState::Captured;
+	eNodeType = ENodeType::ExternalOutput;
+	eNodeState = ENodeState::Captured;
 	delete sProtection;
 	sProtection = nullptr;
 	id = id_counter;
@@ -21,7 +26,7 @@ void ANodeEO::BeginPlay()
 
 void ANodeEO::AcceptPacket(APacket* packet)
 {
-	if (nodeState == NodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
+	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
 	{
 		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
 		
@@ -32,7 +37,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 			{
 				if (!UWidget_Manager::self_ref->known_nodes.ContainsByPredicate([root](FNodeInfo nodeInfo) -> bool
 				{
-					return nodeInfo.node_id == root && nodeInfo.node_ptr && nodeInfo.node_ptr->nodeState == NodeState::Captured;
+					return nodeInfo.node_id == root && nodeInfo.node_ptr && nodeInfo.node_ptr->eNodeState == ENodeState::Captured;
 				}))
 				{
 					if (!UWidget_Manager::self_ref->roots.Contains(root)) 
@@ -49,7 +54,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 			}
 		}
 	}
-	if (nodeState == NodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count)
+	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count)
 	{
 		UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 	}

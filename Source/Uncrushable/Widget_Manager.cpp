@@ -1,59 +1,50 @@
+
+#pragma once
+
 #include "Widget_Manager.h"
+
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
+
 
 UWidget_Manager* UWidget_Manager::self_ref = nullptr;
 bool UWidget_Manager::isGameStart = false;
 
+
 FNodeInfo::FNodeInfo() :
-	node_id(-1), node_ptr(nullptr), characteristic(TEXT("Empty object")), bIsFullInfo(false)
-{
+	node_id(-1), node_ptr(nullptr), 
+	characteristic(TEXT("Empty object")), 
+	bIsFullInfo(false) {
 }
 FNodeInfo::FNodeInfo(int _node_id) :
-	node_id(_node_id), node_ptr(nullptr), characteristic(TEXT("No information\n available :(")), bIsFullInfo(false)
-{
+	node_id(_node_id), 
+	node_ptr(nullptr), 
+	characteristic(TEXT("No information\n available :(")),
+	bIsFullInfo(false) {
 }
 FNodeInfo::FNodeInfo(ANodeBase* _node_ptr) :
-	node_id(_node_ptr->id), node_ptr(_node_ptr), characteristic(UWidget_Manager::FillNodeCharacteristic(*_node_ptr)), bIsFullInfo(true)
-{
+	node_id(_node_ptr->id), 
+	node_ptr(_node_ptr), 
+	characteristic(UWidget_Manager::FillNodeCharacteristic(*_node_ptr)), 
+	bIsFullInfo(true) {
 	node_ptr->Mesh->SetMaterial(0, node_ptr->main_mat);
 }
+
 
 void UWidget_Manager::SetSelfRef(UWidget_Manager* _self_ref)
 {
 	UWidget_Manager::self_ref = _self_ref;
 }
 
-void UWidget_Manager::StartGame()
-{
-	TArray<AActor*> nodes_arr = TArray<AActor*>();
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANodePC::StaticClass(), nodes_arr);
-	generation_timers = new std::vector<FTimerHandle>();
-	for (const auto& node : nodes_arr)
-	{
-		FTimerHandle timer = FTimerHandle();
-		node->GetWorldTimerManager().SetTimer(timer, [nodePC = (ANodePC*)node]
-		{
-			if (UWidget_Manager::isGameStart && nodePC->nodeState != NodeState::Overloaded &&
-				nodePC->nodeState != NodeState::Offline && !nodePC->nodeLinks.empty())
-			{
-				nodePC->GeneratePacket(std::rand() % 101);
-			}
-		}, network_activity_time_tick, true, network_activity_time_tick);
-		generation_timers->push_back(timer);
-	}
-	isGameStart = true;
-}
-
 FString UWidget_Manager::FillNodeCharacteristic(const ANodeBase& node_ptr)
 {
 	FString str = "Type: ";
-	switch (node_ptr.nodeType)
+	switch (node_ptr.eNodeType)
 	{
-	case NodeType::PersonalComputer:		str += TEXT("PC"); break;
-	case NodeType::ExternalOutput:			str += TEXT("EO"); break;
-	case NodeType::TechnicalInfrastructure: str += TEXT("TI"); break;
-	case NodeType::Security:				str += TEXT("SC"); break;
-	case NodeType::DataStorage:				str += TEXT("DS"); break;
+	case ENodeType::PersonalComputer:		str += TEXT("PC"); break;
+	case ENodeType::ExternalOutput:			str += TEXT("EO"); break;
+	case ENodeType::TechnicalInfrastructure: str += TEXT("TI"); break;
+	case ENodeType::Security:				str += TEXT("SC"); break;
+	case ENodeType::DataStorage:				str += TEXT("DS"); break;
 	default:								str += TEXT("???"); break;
 	}
 	if (node_ptr.sProtection != nullptr)
@@ -63,12 +54,12 @@ FString UWidget_Manager::FillNodeCharacteristic(const ANodeBase& node_ptr)
 		{
 			switch (sign)
 			{
-			case Signature::Crash_1:	str += TEXT("C, "); break;
-			case Signature::Crash_2:	str += TEXT("C+, "); break;
-			case Signature::RootKit_1:	str += TEXT("R, "); break;
-			case Signature::RootKit_2:	str += TEXT("R+, "); break;
-			case Signature::Spy_1:		str += TEXT("S, "); break;
-			case Signature::Spy_2:		str += TEXT("S+, "); break;
+			case ESignature::Crash_1:	str += TEXT("C, "); break;
+			case ESignature::Crash_2:	str += TEXT("C+, "); break;
+			case ESignature::RootKit_1:	str += TEXT("R, "); break;
+			case ESignature::RootKit_2:	str += TEXT("R+, "); break;
+			case ESignature::Spy_1:		str += TEXT("S, "); break;
+			case ESignature::Spy_2:		str += TEXT("S+, "); break;
 			default:					str += TEXT("???");
 			}
 		}
@@ -81,26 +72,37 @@ FString UWidget_Manager::FillNodeCharacteristic(const ANodeBase& node_ptr)
 	return str;
 }
 
-void UWidget_Manager::AddKeyInfo(int quantity)
+void UWidget_Manager::StartGame()
 {
-	key_info_counter += quantity;
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Key info progress: " + FString::FromInt(key_info_counter) + "/20 !");
-	if (key_info_counter >= 20)
+	TArray<AActor*> nodes_arr = TArray<AActor*>();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANodePC::StaticClass(), nodes_arr);
+	generation_timers = new std::vector<FTimerHandle>();
+	for (const auto& node : nodes_arr)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation! You Win!");
+		FTimerHandle timer = FTimerHandle();
+		node->GetWorldTimerManager().SetTimer(timer, [nodePC = (ANodePC*)node]
+		{
+			if (UWidget_Manager::isGameStart && nodePC->eNodeState != ENodeState::Overloaded &&
+				nodePC->eNodeState != ENodeState::Offline && !nodePC->nodeLinks.empty())
+			{
+				nodePC->GeneratePacket(std::rand() % 101);
+			}
+		}, network_activity_time_tick, true, network_activity_time_tick);
+		generation_timers->push_back(timer);
 	}
+	isGameStart = true;
 }
 
 void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool bAsID)
 {
-	auto f = [node_ptr](const FNodeInfo &node_info) -> bool
+	auto f = [node_ptr](const FNodeInfo& node_info) -> bool
 	{
 		return node_info.node_id == node_ptr->id;
 	};
 
 	if (bAsID)
 	{
-		if (known_nodes.ContainsByPredicate(f)) 
+		if (known_nodes.ContainsByPredicate(f))
 			return;
 		known_nodes.Add(FNodeInfo(node_ptr->id));
 		node_ptr->SetActorHiddenInGame(false);
@@ -130,7 +132,17 @@ void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool bAsID)
 			nodeLink->link->SetActorHiddenInGame(false);
 		}
 	}
-	
+
+}
+
+void UWidget_Manager::AddKeyInfo(int quantity)
+{
+	key_info_counter += quantity;
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Key info progress: " + FString::FromInt(key_info_counter) + "/20 !");
+	if (key_info_counter >= 20)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Congratulation! You Win!");
+	}
 }
 
 void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id)
@@ -153,24 +165,24 @@ void UWidget_Manager::InitAttack(int target_node_id, ANodeBase* source_node, boo
 	std::vector<ANodeBase*> nodes{};
 	source_node->DeterminePath(target_node_id, nodes);
 	EPacketType _packetType;
-	Signature _sign;
+	ESignature _sign;
 	switch (attack_type)
 	{
 	case 0:
 		_packetType = EPacketType::AttackCapture;
-		_sign = upThreat ? Signature::RootKit_2 : Signature::RootKit_1;
+		_sign = upThreat ? ESignature::RootKit_2 : ESignature::RootKit_1;
 		break;
 	case 1:
 		_packetType = EPacketType::AttackCrash;
-		_sign = upThreat ? Signature::Crash_2 : Signature::Crash_1;
+		_sign = upThreat ? ESignature::Crash_2 : ESignature::Crash_1;
 		break;
 	case 2:
 		_packetType = EPacketType::AttackSpy;
-		_sign = upThreat ? Signature::Spy_2 : Signature::Spy_1;
+		_sign = upThreat ? ESignature::Spy_2 : ESignature::Spy_1;
 		break;
 	default:
 		_packetType = EPacketType::Simple;
-		_sign = Signature::NotSign;
+		_sign = ESignature::NotSign;
 		break;
 	}
 	if (!nodes.empty())
@@ -201,7 +213,7 @@ void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node
 	{
 		APacket* packet = GetWorld()->SpawnActor<APacket>(ANodeBase::packetTemp, source_node->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 		packet->InitPacket(EPacketType::Informative, source_node->id, target_node_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
-		packet->sInformation = new APacket::Information(false, 0, {}, source_node);
+		packet->sInformation = new APacket::FInformation(false, 0, {}, source_node);
 		if (source_node->sInformation)
 		{
 			packet->sInformation->key_info_count += source_node->sInformation->key_info_count;

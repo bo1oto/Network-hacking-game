@@ -2,11 +2,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include <map>
 #include <list>
 #include <tuple>
+
 #include "NodeBase.h"
+
 #include "NodeSC.generated.h"
+
 
 UCLASS()
 class UNCRUSHABLE_API ANodeSC : public ANodeBase

@@ -2,16 +2,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include <vector>
+
 #include "Link.h"
 
 #include "Packet.generated.h"
 
 
-enum class Signature : uint8
+enum class ESignature : uint8
 {
 	Spy_1 = 0,
 	Spy_2,
@@ -39,24 +41,7 @@ class UNCRUSHABLE_API APacket : public AActor
 	GENERATED_BODY()
 
 public:
-	virtual void Tick(float DeltaTime) final;
-	APacket();
-protected:
-	virtual void BeginPlay() final;
-
-
-public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UStaticMeshComponent* Mesh;
-
-	void InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::vector<AActor*> _path);
-	
-	int size;
-	short source_id = -2, target_id = -2;
-	EPacketType packetType;
-	std::vector<AActor*> path;
-
-	struct Helper final
+	struct FHelper final
 	{
 		enum class EHelpState : uint8
 		{
@@ -66,46 +51,68 @@ public:
 			DefeatReport,
 			Prevention
 		};
-		EHelpState helpState;
-		std::vector<Signature> sign;
+		EHelpState eHelpState;
+		std::vector<ESignature> sign;
 		bool isAlarm = false;
 	};
-	struct Information final
+	struct FInformation final
 	{
-		Information() = delete;
-		Information(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref);
+		FInformation() = delete;
+		FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref);
 		bool isDSRequest = false;
 		uint8 key_info_count = 0;
 		std::vector<uint8> roots_for_id;
 		AActor* for_spy_ref = nullptr;
 	};
-	struct Threat final
+	struct FThreat final
 	{
-		Signature sign = Signature::NotSign;
+		ESignature sign = ESignature::NotSign;
 		bool have_root = false;
 		int spy_id = -2;
 	};
+	struct FPacketMove final
+	{
+		float ComputeNodePath(const AActor& source, const AActor& target, const ALink* _link);
+		bool bIsMoving = false;
+		std::vector<FVector> vector_path;
+		std::vector<FVector>::iterator it_path;
+		const ALink* link = nullptr;
+	};
 
-	Helper* sHelper;
-	Information* sInformation;
-	Threat* sThreat;
+public:
+	APacket();
+	//copy constructor
+	//= operator
+	//destructor
+	void InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::vector<AActor*> _path);
+
+protected:
+	virtual void BeginPlay() final;
+
+public:
+	virtual void Tick(float DeltaTime) final;
 
 	UFUNCTION(BlueprintCallable)
 	static void FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam, UMaterialInterface* attack, UMaterialInterface* info, UMaterialInterface* help);
+
+public:
 	static UMaterialInterface* simpleMat;
 	static UMaterialInterface* spamMat;
 	static UMaterialInterface* attackMat;
 	static UMaterialInterface* infoMat;
 	static UMaterialInterface* helpMat;
 
-	struct FPacketMove final
-	{
-		float ComputeNodePath(const AActor& source, const AActor& target, const ALink* _link);
-		bool iden = false;
-		std::vector<FVector> path;
-		std::vector<FVector>::iterator it_path;
-		const ALink* link = nullptr;
-	};
+	int size;
+	short source_id = -2, target_id = -2;
+	EPacketType packetType;
+	std::vector<AActor*> path;
+
+	FHelper* sHelper;
+	FInformation* sInformation;
+	FThreat* sThreat;
 	FPacketMove* sPacketMove;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UStaticMeshComponent* Mesh;
 
 };

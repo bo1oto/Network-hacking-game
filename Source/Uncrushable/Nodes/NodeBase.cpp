@@ -2,13 +2,14 @@
 #pragma once
 
 #include "NodeBase.h"
-#include "NodeTI.h"
+
 #include "Uncrushable/Widget_Manager.h"
+#include "NodeTI.h"
 #include "NodeSC.h"
 
 
-bool ANodeBase::IsAlarm = false;
-EPolitic ANodeBase::politic = EPolitic::NotForbidden;
+bool ANodeBase::bIsAlarm = false;
+EPolitic ANodeBase::ePolitic = EPolitic::NotForbidden;
 int ANodeBase::sameSignChance = 85;
 int ANodeBase::upSignChance = 10;
 int ANodeBase::behaviorChance = 15;
@@ -17,20 +18,6 @@ int ANodeBase::killChance = 80;
 TSubclassOf<APacket> ANodeBase::packetTemp = nullptr;
 
 
-
-void ANodeBase::BeginPlay()
-{
-	Super::BeginPlay();
-	nodeState = NodeState::Working;
-	sProtection = new FProtection();
-	sProtection->threatSigns = { Signature::Crash_1, Signature::RootKit_1, Signature::Spy_1 };
-	ANodeBase::politic = EPolitic::NotForbidden;
-}
-void ANodeBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
 ANodeBase::ANodeBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -38,18 +25,33 @@ ANodeBase::ANodeBase()
 	RootComponent = Mesh;
 }
 
+void ANodeBase::BeginPlay()
+{
+	Super::BeginPlay();
+	eNodeState = ENodeState::Working;
+	sProtection = new FProtection();
+	sProtection->threatSigns = { ESignature::Crash_1, ESignature::RootKit_1, ESignature::Spy_1 };
+	ANodeBase::ePolitic = EPolitic::NotForbidden;
+}
+
+//static
+void ANodeBase::FillPacketTemp(TSubclassOf<APacket> temp)
+{
+	packetTemp = temp;
+}
+//static
 void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNode)
 {
-	if (sourceNode->nodeType == NodeType::TechnicalInfrastructure)
+	if (sourceNode->eNodeType == ENodeType::TechnicalInfrastructure)
 	{
-		if (targetNode->nodeType != NodeType::TechnicalInfrastructure)
+		if (targetNode->eNodeType != ENodeType::TechnicalInfrastructure)
 		{
 			targetNode->vlan = sourceNode->vlan;
 		}
 	}
 	else
 	{
-		if (targetNode->nodeType != NodeType::TechnicalInfrastructure)
+		if (targetNode->eNodeType != ENodeType::TechnicalInfrastructure)
 		{
 			sourceNode->vlan == 0 ? sourceNode->vlan = targetNode->vlan : targetNode->vlan = sourceNode->vlan;
 		}
@@ -63,80 +65,11 @@ void ANodeBase::AddLink(ALink* _link, ANodeBase* sourceNode, ANodeBase* targetNo
 	targetNode->nodeLinks.push_back(new FNodeLink{ _link, sourceNode });
 }
 
-TArray<FText> ANodeBase::GetKeyParameters() const
-{
-	// node type, id + vlan, workload, state
-	TArray<FText> arr {
-		FText::FromString(TEXT("Node") + GetTypeInfo().ToString()),
-		FText::FromString(TEXT("ID: ") + FString::FromInt(id) + TEXT(" (") + FString::FromInt(vlan) + TEXT(")")),
-		FText::FromString(TEXT("Workload: ") + FString::FromInt(workload)),
-		FText::FromString(GetStateInfo())
-	};
-	return arr;
-}
 
-FString ANodeBase::GetInfo() const
+void ANodeBase::Tick(float DeltaTime)
 {
-	FString str = TEXT("id: ") + FString::FromInt(id) + "\n" + TEXT("vlan: ") + FString::FromInt(vlan) + "\n" + TEXT("workload: ") + FString::FromInt(workload);
-	return str;
+	Super::Tick(DeltaTime);
 }
-
-FText ANodeBase::GetTypeInfo() const
-{
-	switch (nodeType)
-	{
-	case NodeType::ExternalOutput:			return FText::FromString(TEXT("EO"));
-	case NodeType::TechnicalInfrastructure: return FText::FromString(TEXT("TI"));
-	case NodeType::Security:				return FText::FromString(TEXT("SC"));
-	case NodeType::PersonalComputer:		return FText::FromString(TEXT("PC"));
-	case NodeType::DataStorage:				return FText::FromString(TEXT("DS"));
-	default:								return FText::FromString(TEXT("WUT!?"));
-	}
-}
-FString ANodeBase::GetStateInfo() const
-{
-	switch (nodeState)
-	{
-	case NodeState::Working:	return TEXT("Working");
-	case NodeState::Captured:	return TEXT("Captured");
-	case NodeState::Overloaded: return TEXT("Overloaded");
-	case NodeState::Offline:	return TEXT("Offline");
-	default:					return TEXT("WUT!?");
-	}
-}
-
-inline void ANodeBase::AddWorkload(int quantity)
-{
-	workload += quantity;
-	if (workload > 100)
-	{
-		nodeState = NodeState::Overloaded;
-		FTimerHandle full_unload_timer = FTimerHandle();
-		GetWorldTimerManager().SetTimer(full_unload_timer, [this]
-		{
-			nodeState = NodeState::Working;
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::FromInt(id) + " unloaded");
-		}, 1.0f, false, 20.0f);
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "I'm (" + FString::FromInt(this->id) + ") dead");
-	}
-}
-void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
-{
-	AddWorkload(_add_work);
-	FTimerHandle unloading_timer = FTimerHandle();
-	GetWorldTimerManager().SetTimer(
-		unloading_timer, 
-		[_add_work, this] {
-			AddWorkload(-_add_work);
-		}, 
-		1.0f, false, delay_time);
-}
-
-//empty
-void ANodeBase::GeneratePacket(int chance)
-{
-}
-
 //Мб надо поменять контейнер, поскольку сейчас формируется путь в обратном порядке
 void ANodeBase::ComputeNodePath(const ANodeBase* const sender, int _id, std::vector<ANodeBase*>& path, int counter)
 {
@@ -147,7 +80,7 @@ void ANodeBase::ComputeNodePath(const ANodeBase* const sender, int _id, std::vec
 	}
 	for (const auto& node : nodeLinks)
 	{
-		if (node->link->isAlive && node->targetNode != sender)
+		if (node->link->bIsAlive && node->targetNode != sender)
 		{
 			if (counter > 50)// avoid deathloops
 			{
@@ -167,9 +100,9 @@ int ANodeBase::FindRouter(int _vlan, int counter) const
 {
 	for (const auto& node : nodeLinks)
 	{
-		if (node->link->isAlive && node->targetNode->vlan == _vlan)
+		if (node->link->bIsAlive && node->targetNode->vlan == _vlan)
 		{
-			if (node->targetNode->nodeType == NodeType::TechnicalInfrastructure)
+			if (node->targetNode->eNodeType == ENodeType::TechnicalInfrastructure)
 			{
 				return node->targetNode->id;
 			}
@@ -185,51 +118,51 @@ int ANodeBase::FindRouter(int _vlan, int counter) const
 	}
 	return -1;
 }
+
 ANodeBase* ANodeBase::CheckNeighbour(int node_id) const
 {
 	for (const auto& nodeLink : nodeLinks)
 	{
-		if (nodeLink->targetNode->id == node_id) 
+		if (nodeLink->targetNode->id == node_id)
 			return nodeLink->targetNode;
 	}
 	return nullptr;
 }
-ANodeBase* ANodeBase::CheckNeighbour(NodeType _nodeType) const
+ANodeBase* ANodeBase::CheckNeighbour(ENodeType _nodeType) const
 {
 	for (const auto& nodeLink : nodeLinks)
 	{
-		if (nodeLink->targetNode->nodeType == _nodeType)
+		if (nodeLink->targetNode->eNodeType == _nodeType)
 		{
 			return nodeLink->targetNode;
 		}
 	}
 	return nullptr;
 }
-void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*> path)
+void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*>& path)
 {
 	//Check neighbour, if they is not target we need to find router (NodeType::TechnicalInfrastructure)
-	if (nodeType == NodeType::TechnicalInfrastructure)
+	if (eNodeType == ENodeType::TechnicalInfrastructure)
 	{
 		path.push_back(this);
 		return;
 	}
-	std::vector<ANodeBase*>* nodes = nullptr;
-	ANodeBase* fast_bolv = nullptr;
+	ANodeBase* neighbour = nullptr;
 	switch (target_id)
 	{
 	default:
-		fast_bolv = CheckNeighbour(target_id);
+		neighbour = CheckNeighbour(target_id);
 		break;
 	case -1:
-		fast_bolv = CheckNeighbour(NodeType::Security);
+		neighbour = CheckNeighbour(ENodeType::Security);
 		break;
 	case -2:
 		return;
 	}
-	if (fast_bolv)
+	if (neighbour)
 	{
 		path.push_back(this);
-		path.push_back(fast_bolv);
+		path.push_back(neighbour);
 		return;
 	}
 
@@ -244,7 +177,7 @@ void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*> path)
 //Physical dispatch
 void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
 {
-	if (nodeState == NodeState::Offline || nodeState == NodeState::Overloaded)
+	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded)
 	{
 		packet->Destroy();
 		return;
@@ -254,7 +187,7 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
 		AcceptPacket(packet);
 		return;
 	}
-	
+
 	ALink* link = nullptr;
 	for (auto& nodeLink : dynamic_cast<ANodeBase*>(*it)->nodeLinks)
 	{
@@ -272,7 +205,7 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
 			break;
 		}
 	}
-	
+
 	float time = packet->sPacketMove->ComputeNodePath(*it[0], *it[1], link);
 	link->AddWorkloadWithDelay(packet->size, time);
 	it[0] = nullptr;
@@ -284,15 +217,69 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
 	}, 1.0f, false, time);
 }
 
+void ANodeBase::SendAlarmPacket()
+{
+	if (eNodeType == ENodeType::Security)
+	{
+		APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
+		packet->InitPacket(EPacketType::Helpful, this->id, -1, {});
+		packet->sHelper->isAlarm = true;
+		AcceptPacket(packet);
+	}
+	if (ANodeSC::id_counter != 30)// if NodeSC exist
+	{
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(-1, nodes);
+		if (!nodes.empty())
+		{
+			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
+			packet->InitPacket(EPacketType::Helpful, this->id, -1, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			packet->sHelper->isAlarm = true;
+			SendPacket(packet, packet->path.begin());
+		}
+	}
+}
+
+void ANodeBase::AddWorkload(int quantity)
+{
+	workload += quantity;
+	if (workload > 100)
+	{
+		eNodeState = ENodeState::Overloaded;
+		FTimerHandle full_unload_timer = FTimerHandle();
+		GetWorldTimerManager().SetTimer(full_unload_timer, [this]
+		{
+			eNodeState = ENodeState::Working;
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::FromInt(id) + " unloaded");
+		}, 1.0f, false, 20.0f);
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "I'm (" + FString::FromInt(this->id) + ") dead");
+	}
+}
+void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0f)
+{
+	AddWorkload(_add_work);
+	FTimerHandle unloading_timer = FTimerHandle();
+	GetWorldTimerManager().SetTimer(
+		unloading_timer,
+		[_add_work, this] {
+		AddWorkload(-_add_work);
+	},
+		1.0f, false, delay_time);
+}
+
+//empty
+void ANodeBase::GeneratePacket(int chance) 
+{
+}
 //Intermediate check (all nodes on the packet path)
 void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
 {
-	if (nodeState == NodeState::Offline || nodeState == NodeState::Overloaded)
+	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded)
 	{
 		packet->Destroy();
 		return;
 	}
-	
+
 	int add_work = 0;
 	float delay_time = 0.0f;
 	if (sProtection && sProtection->bIsOn)
@@ -300,7 +287,7 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
 		/*
 		* 0 - Deny
 		* 1 - Allow
-		* 2 - Additional verification 
+		* 2 - Additional verification
 		*/
 		switch (sProtection->SourceTargetCheck(*packet))
 		{
@@ -308,7 +295,7 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
 			packet->Destroy();
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Bad politic");
 			return;
-		case 1: 
+		case 1:
 			delay_time += 0.2f;
 			add_work += 2;
 			break;
@@ -333,13 +320,13 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
 			if (!packet->sInformation->roots_for_id.empty())
 			{
 				sSpyInfo->stolen_roots.insert(
-					sSpyInfo->stolen_roots.end(), 
-					packet->sInformation->roots_for_id.begin(), 
+					sSpyInfo->stolen_roots.end(),
+					packet->sInformation->roots_for_id.begin(),
 					packet->sInformation->roots_for_id.end());
 			}
 		}
 	}
-	
+
 	if (it != packet->path.end() - 1)
 	{
 		AddWorkloadWithDelay(add_work, delay_time);
@@ -373,282 +360,242 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			goto finish_acceptance;
 		}
 	}
-	
+
 	switch (packet->packetType)
 	{
-		case EPacketType::AttackSpam:
+	case EPacketType::AttackSpam:
+	{
+		//greatly increases the load
+		add_work += 100;
+		processing_time += 3.0f;
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spamed!");
+
+	} break;
+	case EPacketType::Simple:
+	case EPacketType::Informative:
+	{
+		//just a packet, just a load
+		add_work += 4;
+		processing_time += 1.5f;
+	} break;
+	case EPacketType::AttackSpy:
+	{
+		//infects the node with a spy who collects information and sends it to a hacker
+		sSpyInfo = new FSpyInfo{ FTimerHandle(), 0, {}, packet->sThreat->spy_id };
+		AddWorkload(5);
+		GetWorldTimerManager().SetTimer(sSpyInfo->spyTimer, [this]
 		{
-			//greatly increases the load
-			add_work += 100;
-			processing_time += 3.0f;
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spamed!");
-			
-		} break;
-		case EPacketType::Simple:
-		case EPacketType::Informative:
-		{
-			//just a packet, just a load
-			add_work += 4;
-			processing_time += 1.5f;
-		} break;
-		case EPacketType::AttackSpy:
-		{
-			//infects the node with a spy who collects information and sends it to a hacker
-			sSpyInfo = new FSpyInfo{ FTimerHandle(), 0, {}, packet->sThreat->spy_id };
-			AddWorkload(5);
-			GetWorldTimerManager().SetTimer(sSpyInfo->spyTimer, [this]
+			if (sProtection && sProtection->bIsOn && sProtection->behaviorAnalizer && (rand() % 101 < behaviorChance))
 			{
-				if (sProtection && sProtection->bIsOn && sProtection->behaviorAnalizer && (rand() % 101 < behaviorChance))
-				{
-					GetWorldTimerManager().ClearTimer(sSpyInfo->spyTimer);
-					delete sSpyInfo;
-					AddWorkload(-5);
-					SendAlarmPacket();
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy detected!");
-					return;
-				}
-				if (this->sInformation)
-				{
-					sSpyInfo->stolen_key_info += this->sInformation->key_info_count;
-					sSpyInfo->stolen_roots.insert(
-						sSpyInfo->stolen_roots.end(), this->sInformation->vec_roots.begin(), this->sInformation->vec_roots.end());
-					this->sInformation->key_info_count = 0;
-				}
-				std::vector<ANodeBase*> nodes{};
-				DeterminePath(sSpyInfo->spy_id, nodes);
-				if (!nodes.empty())
-				{
-					APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-					packet->InitPacket(EPacketType::Simple, this->id, sSpyInfo->spy_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
-					packet->sInformation = new APacket::Information(false, sSpyInfo->stolen_key_info, {}, this);
-					sSpyInfo->stolen_key_info = 0;
-					SendPacket(packet, packet->path.begin());
-				}
-			}, 20.0f, true, 20.0f);
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy attack succesful!");
-		} break;
-		case EPacketType::AttackCapture:
-		{
-			//puts the node under the control of a hacker, instantly with roots and after many time without
-			if (packet->sThreat->have_root)
-			{
-				add_work += 10;
-				processing_time += 2.0f;
-				nodeState = NodeState::Captured;
-				if (sProtection) sProtection->bIsOn = false;
-				UWidget_Manager::self_ref->AddNodeInfo(this, false);
-				UWidget_Manager::self_ref->roots.Remove(this->id);
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured by roots!");
-				goto finish_acceptance;
+				GetWorldTimerManager().ClearTimer(sSpyInfo->spyTimer);
+				delete sSpyInfo;
+				AddWorkload(-5);
+				SendAlarmPacket();
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy detected!");
+				return;
 			}
-			
-			AddWorkload(15);
-			float brutforse_time;
-			int* counter = new int(0);
-			FTimerHandle* brutforseTimer = new FTimerHandle();
-			switch (nodeType)
+			if (this->sInformation)
 			{
-			case NodeType::PersonalComputer:		brutforse_time = 100.0f; break;
-			case NodeType::TechnicalInfrastructure: brutforse_time = 1000.0f; break;
-			case NodeType::DataStorage:				brutforse_time = 1000.0f; break;
-			case NodeType::Security:				brutforse_time = 2000.0f; break;
-			default:								brutforse_time = 0.0f; break;
+				sSpyInfo->stolen_key_info += this->sInformation->key_info_count;
+				sSpyInfo->stolen_roots.insert(
+					sSpyInfo->stolen_roots.end(), this->sInformation->vec_roots.begin(), this->sInformation->vec_roots.end());
+				this->sInformation->key_info_count = 0;
 			}
-			GetWorldTimerManager().SetTimer(*brutforseTimer, [this, brutforseTimer, counter, brutforse_time]
+			std::vector<ANodeBase*> nodes{};
+			DeterminePath(sSpyInfo->spy_id, nodes);
+			if (!nodes.empty())
 			{
-				(*counter)++;
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Left until the capture: " + FString::FromInt(brutforse_time / 10 * (*counter)));
-				if (*counter < 10)
+				APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
+				packet->InitPacket(EPacketType::Simple, this->id, sSpyInfo->spy_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+				packet->sInformation = new APacket::FInformation(false, sSpyInfo->stolen_key_info, {}, this);
+				sSpyInfo->stolen_key_info = 0;
+				SendPacket(packet, packet->path.begin());
+			}
+		}, 20.0f, true, 20.0f);
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy attack succesful!");
+	} break;
+	case EPacketType::AttackCapture:
+	{
+		//puts the node under the control of a hacker, instantly with roots and after many time without
+		if (packet->sThreat->have_root)
+		{
+			add_work += 10;
+			processing_time += 2.0f;
+			eNodeState = ENodeState::Captured;
+			if (sProtection) sProtection->bIsOn = false;
+			UWidget_Manager::self_ref->AddNodeInfo(this, false);
+			UWidget_Manager::self_ref->roots.Remove(this->id);
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured by roots!");
+			goto finish_acceptance;
+		}
+
+		AddWorkload(15);
+		float brutforse_time;
+		int* counter = new int(0);
+		FTimerHandle* brutforseTimer = new FTimerHandle();
+		switch (eNodeType)
+		{
+		case ENodeType::PersonalComputer:		brutforse_time = 100.0f; break;
+		case ENodeType::TechnicalInfrastructure: brutforse_time = 1000.0f; break;
+		case ENodeType::DataStorage:				brutforse_time = 1000.0f; break;
+		case ENodeType::Security:				brutforse_time = 2000.0f; break;
+		default:								brutforse_time = 0.0f; break;
+		}
+		GetWorldTimerManager().SetTimer(*brutforseTimer, [this, brutforseTimer, counter, brutforse_time]
+		{
+			(*counter)++;
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Left until the capture: " + FString::FromInt(brutforse_time / 10 * (*counter)));
+			if (*counter < 10)
+			{
+				if (sProtection && rand() % 101 > 50)
 				{
-					if (sProtection && rand() % 101 > 50)
-					{
-						GetWorldTimerManager().ClearTimer(*brutforseTimer);
-						delete counter;
-						delete brutforseTimer;
-						AddWorkload(-15);
-						SendAlarmPacket();
-					}
-				}
-				else
-				{
-					delete counter;
 					GetWorldTimerManager().ClearTimer(*brutforseTimer);
+					delete counter;
 					delete brutforseTimer;
 					AddWorkload(-15);
-					AddWorkloadWithDelay(10, 2.0f);
-					nodeState = NodeState::Captured;
-					if (sProtection) sProtection->bIsOn = false;
-					UWidget_Manager::self_ref->AddNodeInfo(this, false);
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
-				}
-			}, brutforse_time / 10.0f, true, 0.0f);
-		} break;
-		case EPacketType::AttackCrash:
-		{
-			//Shuts down the node completely
-			nodeState = NodeState::Offline;
-			FTimerHandle timer = FTimerHandle();
-			GetWorldTimerManager().SetTimer(timer, [this]
-			{
-				nodeState = NodeState::Working;
-			}, 1.0f, false, 30.0f);
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Crushed!");
-		} break;
-		case EPacketType::Helpful:
-		{
-			//Heal or kill node
-			add_work += 5;
-			processing_time += 3.0f;
-			bool operationState = false;
-			if (nodeState == NodeState::Captured || sSpyInfo)
-			{
-				switch (packet->sHelper->helpState)
-				{
-				case APacket::Helper::EHelpState::Killer:
-				{
-					if (rand() % 101 < killChance)
-					{
-						add_work += 10;
-						processing_time += 5;
-						operationState = true; 
-						if (sSpyInfo)
-						{
-							delete sSpyInfo;
-							AddWorkload(-5);
-						}
-						nodeState = NodeState::Offline;
-					}
-				} break;
-				case APacket::Helper::EHelpState::Healer:
-				{
-					if (rand() % 101 < healChance)
-					{
-						add_work += 30;
-						processing_time += 10;
-						operationState = true;
-						if (sSpyInfo)
-						{
-							delete sSpyInfo;
-							AddWorkload(-5);
-						}
-						nodeState = NodeState::Working;
-					}
-				} break;
-				default: 
-					break;
+					SendAlarmPacket();
 				}
 			}
 			else
 			{
-				operationState = true;
+				delete counter;
+				GetWorldTimerManager().ClearTimer(*brutforseTimer);
+				delete brutforseTimer;
+				AddWorkload(-15);
+				AddWorkloadWithDelay(10, 2.0f);
+				eNodeState = ENodeState::Captured;
+				if (sProtection) sProtection->bIsOn = false;
+				UWidget_Manager::self_ref->AddNodeInfo(this, false);
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
 			}
-			std::vector<ANodeBase*> nodes{};
-			DeterminePath(packet->source_id, nodes);
-			if (!nodes.empty())
+		}, brutforse_time / 10.0f, true, 0.0f);
+	} break;
+	case EPacketType::AttackCrash:
+	{
+		//Shuts down the node completely
+		eNodeState = ENodeState::Offline;
+		FTimerHandle timer = FTimerHandle();
+		GetWorldTimerManager().SetTimer(timer, [this]
+		{
+			eNodeState = ENodeState::Working;
+		}, 1.0f, false, 30.0f);
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Crushed!");
+	} break;
+	case EPacketType::Helpful:
+	{
+		//Heal or kill node
+		add_work += 5;
+		processing_time += 3.0f;
+		bool operationState = false;
+		if (eNodeState == ENodeState::Captured || sSpyInfo)
+		{
+			switch (packet->sHelper->eHelpState)
 			{
-				APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-				_packet->InitPacket(EPacketType::Helpful, this->id, packet->source_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
-				if (operationState)
+			case APacket::FHelper::EHelpState::Killer:
+			{
+				if (rand() % 101 < killChance)
 				{
-					_packet->sHelper->helpState = APacket::Helper::EHelpState::SuccessReport;
+					add_work += 10;
+					processing_time += 5;
+					operationState = true;
+					if (sSpyInfo)
+					{
+						delete sSpyInfo;
+						AddWorkload(-5);
+					}
+					eNodeState = ENodeState::Offline;
 				}
-				else 
+			} break;
+			case APacket::FHelper::EHelpState::Healer:
+			{
+				if (rand() % 101 < healChance)
 				{
-					_packet->sHelper->helpState = APacket::Helper::EHelpState::DefeatReport; 
+					add_work += 30;
+					processing_time += 10;
+					operationState = true;
+					if (sSpyInfo)
+					{
+						delete sSpyInfo;
+						AddWorkload(-5);
+					}
+					eNodeState = ENodeState::Working;
 				}
-				SendPacket(_packet, _packet->path.begin());
+			} break;
+			default:
+				break;
 			}
-		} break;
+		}
+		else
+		{
+			operationState = true;
+		}
+		std::vector<ANodeBase*> nodes{};
+		DeterminePath(packet->source_id, nodes);
+		if (!nodes.empty())
+		{
+			APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
+			_packet->InitPacket(EPacketType::Helpful, this->id, packet->source_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
+			if (operationState)
+			{
+				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::SuccessReport;
+			}
+			else
+			{
+				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::DefeatReport;
+			}
+			SendPacket(_packet, _packet->path.begin());
+		}
+	} break;
 	}
 finish_acceptance:
 	AddWorkloadWithDelay(add_work, processing_time);
 	packet->Destroy();
 }
 
-void ANodeBase::SendAlarmPacket()
+FString ANodeBase::GetInfo() const
 {
-	if (nodeType == NodeType::Security)
+	FString str = TEXT("id: ") + FString::FromInt(id) + "\n" + TEXT("vlan: ") + FString::FromInt(vlan) + "\n" + TEXT("workload: ") + FString::FromInt(workload);
+	return str;
+}
+FText ANodeBase::GetTypeInfo() const
+{
+	switch (eNodeType)
 	{
-		APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-		packet->InitPacket(EPacketType::Helpful, this->id, -1, {});
-		packet->sHelper->isAlarm = true;
-		AcceptPacket(packet);
+	case ENodeType::ExternalOutput:			return FText::FromString(TEXT("EO"));
+	case ENodeType::TechnicalInfrastructure: return FText::FromString(TEXT("TI"));
+	case ENodeType::Security:				return FText::FromString(TEXT("SC"));
+	case ENodeType::PersonalComputer:		return FText::FromString(TEXT("PC"));
+	case ENodeType::DataStorage:				return FText::FromString(TEXT("DS"));
+	default:								return FText::FromString(TEXT("WUT!?"));
 	}
-	if (ANodeSC::id_counter != 30)// if NodeSC exist
+}
+FString ANodeBase::GetStateInfo() const
+{
+	switch (eNodeState)
 	{
-		std::vector<ANodeBase*> nodes{};
-		DeterminePath(-1, nodes);
-		if (!nodes.empty())
-		{
-			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(EPacketType::Helpful, this->id, -1, std::vector<AActor*>(nodes.begin(), nodes.end()));
-			packet->sHelper->isAlarm = true;
-			SendPacket(packet, packet->path.begin());
-		}
+	case ENodeState::Working:	return TEXT("Working");
+	case ENodeState::Captured:	return TEXT("Captured");
+	case ENodeState::Overloaded: return TEXT("Overloaded");
+	case ENodeState::Offline:	return TEXT("Offline");
+	default:					return TEXT("WUT!?");
 	}
 }
 
-bool ANodeBase::FProtection::SignatureCheck(const APacket& packet) const
+TArray<FText> ANodeBase::GetKeyParameters() const
 {
-	auto signCheck = [](const Signature sign_1, const Signature sign_2) -> bool
-	{
-		if (sign_1 == sign_2 && (rand() % 101 < sameSignChance))
-			return true;
-		switch (sign_1)
-		{
-			case Signature::Crash_1: 
-				if (sign_2 == Signature::Crash_2 && (rand() % (101) < upSignChance))
-					return true;
-				break;
-			case Signature::RootKit_1: 
-				if (sign_2 == Signature::RootKit_2 && (rand() % (101) < upSignChance))
-					return true;
-				break;
-			case Signature::Spy_1: 
-				if (sign_2 == Signature::Spy_2 && (rand() % (101) < upSignChance))
-					return true;
-				break;
-			default: 
-				return false;
-		}
-		return false;
+	// node type, id + vlan, workload, state
+	TArray<FText> arr{
+		FText::FromString(TEXT("Node") + GetTypeInfo().ToString()),
+		FText::FromString(TEXT("ID: ") + FString::FromInt(id) + TEXT(" (") + FString::FromInt(vlan) + TEXT(")")),
+		FText::FromString(TEXT("Workload: ") + FString::FromInt(workload)),
+		FText::FromString(GetStateInfo())
 	};
-	if (packet.sThreat)
-	{
-		for (const auto& _sign : threatSigns)
-		{
-			if (signCheck(_sign, packet.sThreat->sign)) 
-				return true;
-		}
-	}
-	return false;
+	return arr;
 }
 
-int ANodeBase::FProtection::SourceTargetCheck(const APacket& packet) const
+void ANodeBase::SetVLAN(int num)
 {
-	/*
-	* 0 - Deny
-	* 1 - Allow
-	* 2 - Additional verification 
-	*/
-	int s_id = packet.source_id, 
-		t_id = packet.target_id;
-
-	if (s_id < 5)//If source is EO
-	{
-		if (politic == EPolitic::OnlyAllowed || t_id < 70)//or target is not PC
-			return 0;
-		else
-			return 1;
-	}
-	if (t_id < 5)//If target is EO
-	{
-		if (politic == EPolitic::OnlyAllowed || s_id >= 70)//or source is PC 
-			return 0;
-		else
-			return 1;
-	}
-	return 1;
+	vlan = num;
 }
 
 void ANodeBase::AddInformation(ANodeBase* node_ptr)
@@ -663,11 +610,11 @@ void ANodeBase::AddInformation(ANodeBase* node_ptr)
 		if (sInformation->vec_net_id.empty()) sInformation->vec_net_id = { node_ptr };
 		else
 		{
-			auto contain = [](std::vector<ANodeBase*> &vec, int node_id) -> bool
+			auto contain = [](std::vector<ANodeBase*>& vec, int node_id) -> bool
 			{
 				for (auto& elem : vec)
 				{
-					if (elem->id == node_id) 
+					if (elem->id == node_id)
 						return true;
 				}
 				return false;
@@ -714,16 +661,72 @@ void ANodeBase::AddRoots(int root_id)
 		}
 	}
 }
+
 bool ANodeBase::ContainInfo()
 {
 	return sInformation != nullptr;
 }
 
-void ANodeBase::FillPacketTemp(TSubclassOf<APacket> temp)
+
+bool ANodeBase::FProtection::SignatureCheck(const APacket& packet) const
 {
-	packetTemp = temp;
+	auto signCheck = [](const ESignature sign_1, const ESignature sign_2) -> bool
+	{
+		if (sign_1 == sign_2 && (rand() % 101 < sameSignChance))
+			return true;
+		switch (sign_1)
+		{
+			case ESignature::Crash_1: 
+				if (sign_2 == ESignature::Crash_2 && (rand() % (101) < upSignChance))
+					return true;
+				break;
+			case ESignature::RootKit_1: 
+				if (sign_2 == ESignature::RootKit_2 && (rand() % (101) < upSignChance))
+					return true;
+				break;
+			case ESignature::Spy_1: 
+				if (sign_2 == ESignature::Spy_2 && (rand() % (101) < upSignChance))
+					return true;
+				break;
+			default: 
+				return false;
+		}
+		return false;
+	};
+	if (packet.sThreat)
+	{
+		for (const auto& _sign : threatSigns)
+		{
+			if (signCheck(_sign, packet.sThreat->sign)) 
+				return true;
+		}
+	}
+	return false;
 }
-void ANodeBase::SetVLAN(int num)
+
+int ANodeBase::FProtection::SourceTargetCheck(const APacket& packet) const
 {
-	vlan = num;
+	/*
+	* 0 - Deny
+	* 1 - Allow
+	* 2 - Additional verification 
+	*/
+	int s_id = packet.source_id, 
+		t_id = packet.target_id;
+
+	if (s_id < 5)//If source is EO
+	{
+		if (ePolitic == EPolitic::OnlyAllowed || t_id < 70)//or target is not PC
+			return 0;
+		else
+			return 1;
+	}
+	if (t_id < 5)//If target is EO
+	{
+		if (ePolitic == EPolitic::OnlyAllowed || s_id >= 70)//or source is PC 
+			return 0;
+		else
+			return 1;
+	}
+	return 1;
 }

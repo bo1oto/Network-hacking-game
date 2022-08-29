@@ -1,7 +1,8 @@
 
 #pragma once
-#include "NodeSC.h"
+
 #include "Nodes.h"
+
 
 int ANodeSC::id_counter = 30;
 
@@ -13,7 +14,7 @@ void ANodeSC::BeginPlay()
 {
 	ANodeBase::BeginPlay();
 	AddWorkload(40);
-	nodeType = NodeType::Security;
+	eNodeType = ENodeType::Security;
 	id = id_counter;
 	id_counter++;
 	helpTimer = FTimerHandle();
@@ -35,9 +36,9 @@ void ANodeSC::AcceptPacket(APacket* packet)
 			int item_num = sApocalypseRescueKit->map_id_pos[packet->source_id];
 			auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
 			std::advance(it, item_num);
-			switch (packet->sHelper->helpState)
+			switch (packet->sHelper->eHelpState)
 			{
-			case APacket::Helper::EHelpState::SuccessReport:
+			case APacket::FHelper::EHelpState::SuccessReport:
 			{
 				GetWorldTimerManager().ClearTimer(*(*it).first);
 				delete (*it).first;
@@ -48,7 +49,7 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				packet->Destroy();
 				return;
 			}
-			case APacket::Helper::EHelpState::DefeatReport:
+			case APacket::FHelper::EHelpState::DefeatReport:
 			{
 				(*it).second = true;
 				AddWorkloadWithDelay(5, 2.0f);
@@ -64,10 +65,10 @@ void ANodeSC::AcceptPacket(APacket* packet)
 		}
 		if (packet->sHelper->isAlarm)
 		{
-			if (!ANodeBase::IsAlarm)
+			if (!ANodeBase::bIsAlarm)
 			{
-				ANodeBase::IsAlarm = true;
-				ANodeBase::politic = EPolitic::OnlyAllowed;
+				ANodeBase::bIsAlarm = true;
+				ANodeBase::ePolitic = EPolitic::OnlyAllowed;
 				ANodeBase::sameSignChance = 100;
 				ANodeBase::upSignChance = 50;
 				ANodeBase::behaviorChance = 75;
@@ -100,7 +101,7 @@ void ANodeSC::SaveThisWorld()
 		{
 			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 			packet->InitPacket(EPacketType::Helpful, this->id, _i, std::vector<AActor*>(nodes.begin(), nodes.end()));
-			packet->sHelper->helpState = APacket::Helper::EHelpState::Healer;
+			packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Healer;
 
 			FTimerHandle* timer = new FTimerHandle();
 			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::make_pair(timer, false));
@@ -117,7 +118,7 @@ void ANodeSC::SaveThisWorld()
 				{
 					APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
 					_packet->InitPacket(EPacketType::Helpful, this->id, _id, std::vector<AActor*>(path.begin(), path.end()));
-					_packet->sHelper->helpState = APacket::Helper::EHelpState::Killer;
+					_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Killer;
 					SendPacket(_packet, _packet->path.begin());
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Killer for " + FString::FromInt(_id) + " coming!");
 				}

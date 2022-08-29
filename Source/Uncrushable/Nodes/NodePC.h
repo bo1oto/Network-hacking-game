@@ -2,22 +2,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "NodeBase.h"
+
 #include "NodePC.generated.h"
+
 
 UCLASS()
 class UNCRUSHABLE_API ANodePC : public ANodeBase
 {
 	GENERATED_BODY()
 	
-	void AcceptPacket(APacket* packet) final;
 public:
 	ANodePC();
 	void BeginPlay() final;
-	UPROPERTY(BlueprintReadWrite, Category = "GameRules")
-	bool have_phys_connection = false;
 
+	virtual void GeneratePacket(int chance) override final;
+
+private:
+	virtual void AcceptPacket(APacket* packet) override final;
+
+public:
 	static int id_counter;//PC - 70-89
 
-	void GeneratePacket(int chance) final;
+	UPROPERTY(BlueprintReadWrite, Category = "GameRules")
+	bool bHasPhysicalConnection = false;
 };
