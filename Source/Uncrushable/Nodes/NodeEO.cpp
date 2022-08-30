@@ -45,7 +45,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 				}
 			}
 		}
-		ANodeBase::Information* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
+		ANodeBase::FInformation* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
 		if (fast_ptr)
 		{
 			for (auto elem : fast_ptr->vec_net_id)

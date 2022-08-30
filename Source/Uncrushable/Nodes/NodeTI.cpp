@@ -28,7 +28,7 @@ void ANodeTI::BeginPlay()
 	id_counter++;
 	vlan = vlan_counter;
 	vlan_counter++;
-	sInformation = new Information;
+	sInformation = new FInformation();
 }
 		
 
@@ -58,44 +58,37 @@ void ANodeTI::AcceptPacket(APacket* packet)
 		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && eNodeState != ENodeState::Captured)
 		{
 			// Then look for the closest known security node
-			std::vector<ANodeBase*> main{}, bolv{};
-			for (int i = ANodeSC::id_counter - 1; i >= 30; i--)
+			std::stack<AActor*> main{}, bolv{};
+			int _id = -2;
+			for (int i = ANodeSC::id_counter - 1; i >= 30; --i)
 			{
 				if (CheckIDInTable(i))
 				{
 					ComputeNodePath(this, i, main);
 					if (bolv.empty() || main.size() < bolv.size())
 					{
+						_id = i;
 						bolv = main;
 					}
 				}
 			}
 			if (!bolv.empty())
 			{
-				std::vector<ANodeBase*> nodes{};
-				for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
-				{
-					nodes.push_back(*it);
-				}
-				packet->target_id = (*bolv.begin())->id;
-				packet->path = std::vector<AActor*>(nodes.begin(), nodes.end());
-				SendPacket(packet, packet->path.begin());
+				packet->target_id = _id;
+				packet->path.swap(bolv);
+				SendPacket(packet);
 			}
 			goto add_work;
 
 		}
 		if (CheckIDInTable(packet->target_id))
 		{
-			std::vector<ANodeBase*> nodes{}, bolv{};
-			ComputeNodePath(this, packet->target_id, bolv);
-			for (auto it = bolv.rbegin(); it != bolv.rend(); it++)
+			std::stack<AActor*> nodes_stack{};
+			ComputeNodePath(this, packet->target_id, nodes_stack);
+			if (!nodes_stack.empty())
 			{
-				nodes.push_back(*it);
-			}
-			if (!nodes.empty())
-			{
-				packet->path = std::vector<AActor*>(nodes.begin(), nodes.end());
-				SendPacket(packet, packet->path.begin());
+				packet->path.swap(nodes_stack);
+				SendPacket(packet);
 				goto add_work;
 			}
 		}

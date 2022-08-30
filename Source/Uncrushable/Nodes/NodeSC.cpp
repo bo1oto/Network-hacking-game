@@ -22,6 +22,7 @@ void ANodeSC::BeginPlay()
 	sProtection->bSpamFilter = true;
 	have_recovery_system = true;
 }
+
 void ANodeSC::Tick(float DeltaTime)
 {
 	ANodeBase::Tick(DeltaTime);
@@ -93,53 +94,52 @@ void ANodeSC::GeneratePacket(int chance)
 
 void ANodeSC::SaveThisWorld()
 {
-	auto BlessAndSave = [this](int _i)
+	auto BlessAndSave = [this](int _id)
 	{
-		std::vector<ANodeBase*> nodes{};
-		DeterminePath(_i, nodes);
-		if (!nodes.empty())
-		{
-			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(EPacketType::Helpful, this->id, _i, std::vector<AActor*>(nodes.begin(), nodes.end()));
-			packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Healer;
+		APacket* packet = CreatePacket(_id, EPacketType::Helpful);
 
-			FTimerHandle* timer = new FTimerHandle();
-			sApocalypseRescueKit->list_apocalypse_timers.push_back(std::make_pair(timer, false));
-			sApocalypseRescueKit->map_id_pos.insert({ _i, sApocalypseRescueKit->list_size });
-
-			//The timer starts, if there is no response, then the killers start spamming
-			GetWorldTimerManager().SetTimer(*timer, [this, _id = _i, vec_num = sApocalypseRescueKit->list_size, path = nodes]
-			{
-				bool no_response_flag = true;
-				//Так как путь статичен, я копирую в стэк вектор узлов, а уже из него создаю копию в куче и указатель на неё
-				auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
-				std::advance(it, vec_num);
-				if ((*it).second)
-				{
-					APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-					_packet->InitPacket(EPacketType::Helpful, this->id, _id, std::vector<AActor*>(path.begin(), path.end()));
-					_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Killer;
-					SendPacket(_packet, _packet->path.begin());
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Killer for " + FString::FromInt(_id) + " coming!");
-				}
-				else if (no_response_flag)
-				{
-					no_response_flag = false;
-					FTimerHandle timer = FTimerHandle();
-					GetWorldTimerManager().SetTimer(timer, [it]
-					{
-						(*it).second = true;
-					}, 1.0f, false, 30.0f);
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Not yet for " + FString::FromInt(_id));
-				}
-				
-			}, 15.0f, true, 15.0f);
-
-			SendPacket(packet, packet->path.begin());
-
-			sApocalypseRescueKit->list_size++;
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Healer for " + FString::FromInt(_i) + " coming!");
+		if (!packet) {
+			return;
 		}
+
+		packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Healer;
+
+		FTimerHandle* timer = new FTimerHandle();
+		sApocalypseRescueKit->list_apocalypse_timers.push_back(std::make_pair(timer, false));
+		sApocalypseRescueKit->map_id_pos.insert({ _id, sApocalypseRescueKit->list_size });
+
+		//The timer starts, if there is no response, then the killers start spamming
+		GetWorldTimerManager().SetTimer(*timer, [this, _id = _id, vec_num = sApocalypseRescueKit->list_size, path = packet->path]
+		{
+			bool no_response_flag = true;
+			//Так как путь статичен, я копирую в стэк вектор узлов, а уже из него создаю копию в куче и указатель на неё
+			auto it = sApocalypseRescueKit->list_apocalypse_timers.begin();
+			std::advance(it, vec_num);
+			if ((*it).second)
+			{
+				APacket* _packet = CreatePacket(_id, EPacketType::Helpful);
+				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Killer;
+
+				SendPacket(_packet);
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Killer for " + FString::FromInt(_id) + " coming!");
+			}
+			else if (no_response_flag)
+			{
+				no_response_flag = false;
+				FTimerHandle timer = FTimerHandle();
+				GetWorldTimerManager().SetTimer(timer, [it]
+				{
+					(*it).second = true;
+				}, 1.0f, false, 30.0f);
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Not yet for " + FString::FromInt(_id));
+			}
+
+		}, 15.0f, true, 15.0f);
+
+		SendPacket(packet);
+
+		sApocalypseRescueKit->list_size++;
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Healer for " + FString::FromInt(_id) + " coming!");
 	};
 	for (int i = 10; i < ANodeTI::id_counter; ++i)
 	{

@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 
 #include <vector>
+#include <stack>
 
 #include "Uncrushable/Link.h"
 #include "Uncrushable/Packet.h"
@@ -68,7 +69,7 @@ public:
 		ANodeBase* targetNode;
 	};
 
-	struct Information final
+	struct FInformation final
 	{
 		std::vector<ANodeBase*> vec_net_id;
 		std::vector<short> vec_roots;
@@ -89,16 +90,17 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	void ComputeNodePath(const ANodeBase* sender, int _id, std::vector<ANodeBase*>& path, int counter = 0);
 
 	int FindRouter(int _vlan, int counter = 0) const;
 
-	ANodeBase* CheckNeighbour(int node_id) const;
+	APacket* CreatePacket(int target_id, EPacketType packet_type);
+
+	ANodeBase* CheckNeighbour(int NodeId) const;
 	ANodeBase* CheckNeighbour(ENodeType _nodeType) const;
+	void DeterminePath(int NodeId, std::stack<AActor*>& path_out);
+	void ComputeNodePath(const ANodeBase* sender, int _id, std::stack<AActor*>& path_out, int counter = 0);
 
-	void DeterminePath(int node_id, std::vector<ANodeBase*>& path);
-
-	void SendPacket(APacket* packet, std::vector<AActor*>::iterator it);
+	void SendPacket(APacket* packet);
 
 protected:
 	virtual void BeginPlay() override;
@@ -115,11 +117,11 @@ protected:
 	inline void AddWorkload(int quantity);
 	void AddWorkloadWithDelay(short _add_work, float delay_time);
 
-	virtual void GeneratePacket(int chance);
-
-	virtual void CheckPacket(APacket* packet, std::vector<AActor*>::iterator it);
+	virtual void CheckPacket(APacket* packet);
 
 	virtual void AcceptPacket(APacket* packet);
+
+	virtual void GeneratePacket(int chance);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Information")
@@ -153,7 +155,7 @@ public:
 
 
 	UPROPERTY(BlueprintReadOnly)
-	TEnumAsByte<ENodeState> eNodeState;
+	ENodeState eNodeState;
 
 	UPROPERTY(BlueprintReadOnly)
 	int vlan = 0;
@@ -164,7 +166,7 @@ public:
 	ENodeType eNodeType;
 
 	FProtection* sProtection;
-	Information* sInformation;
+	FInformation* sInformation;
 	std::vector<FNodeLink*> nodeLinks = {};
 
 

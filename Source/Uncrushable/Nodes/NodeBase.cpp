@@ -70,31 +70,6 @@ void ANodeBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
-//Мб надо поменять контейнер, поскольку сейчас формируется путь в обратном порядке
-void ANodeBase::ComputeNodePath(const ANodeBase* const sender, int _id, std::vector<ANodeBase*>& path, int counter)
-{
-	if (this->id == _id)
-	{
-		path.push_back(this);
-		return;
-	}
-	for (const auto& node : nodeLinks)
-	{
-		if (node->link->bIsAlive && node->targetNode != sender)
-		{
-			if (counter > 50)// avoid deathloops
-			{
-				return;
-			}
-			node->targetNode->ComputeNodePath(this, _id, path, counter + 1);
-			if (!path.empty())
-			{
-				path.push_back(this);
-				return;
-			}
-		}
-	}
-}
 
 int ANodeBase::FindRouter(int _vlan, int counter) const
 {
@@ -119,11 +94,23 @@ int ANodeBase::FindRouter(int _vlan, int counter) const
 	return -1;
 }
 
-ANodeBase* ANodeBase::CheckNeighbour(int node_id) const
+APacket* ANodeBase::CreatePacket(int target_id, EPacketType packet_type)
+{
+	std::stack<AActor*> nodes_stack{};
+	DeterminePath(target_id, nodes_stack);
+	if (nodes_stack.empty()) {
+		return nullptr;
+	}
+	APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
+	packet->InitPacket(packet_type, this->id, target_id, nodes_stack);
+	return packet;
+}
+
+ANodeBase* ANodeBase::CheckNeighbour(int NodeId) const
 {
 	for (const auto& nodeLink : nodeLinks)
 	{
-		if (nodeLink->targetNode->id == node_id)
+		if (nodeLink->targetNode->id == NodeId)
 			return nodeLink->targetNode;
 	}
 	return nullptr;
@@ -139,12 +126,12 @@ ANodeBase* ANodeBase::CheckNeighbour(ENodeType _nodeType) const
 	}
 	return nullptr;
 }
-void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*>& path)
+void ANodeBase::DeterminePath(int target_id, std::stack<AActor*>& path_out)
 {
 	//Check neighbour, if they is not target we need to find router (NodeType::TechnicalInfrastructure)
-	if (eNodeType == ENodeType::TechnicalInfrastructure)
+	if (eNodeType == ENodeType::TechnicalInfrastructure || this->id == target_id)
 	{
-		path.push_back(this);
+		path_out.push(this);
 		return;
 	}
 	ANodeBase* neighbour = nullptr;
@@ -161,8 +148,8 @@ void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*>& path)
 	}
 	if (neighbour)
 	{
-		path.push_back(this);
-		path.push_back(neighbour);
+		path_out.push(neighbour);
+		path_out.push(this);
 		return;
 	}
 
@@ -170,31 +157,58 @@ void ANodeBase::DeterminePath(int target_id, std::vector<ANodeBase*>& path)
 	int router_id = FindRouter(vlan);
 	if (router_id != -1)
 	{
-		ComputeNodePath(this, router_id, path);
+		ComputeNodePath(this, router_id, path_out);
+	}
+}
+//Мб надо поменять контейнер, поскольку сейчас формируется путь в обратном порядке
+void ANodeBase::ComputeNodePath(const ANodeBase* const sender, int _id, std::stack<AActor*>& path_out, int counter)
+{
+	if (this->id == _id)
+	{
+		path_out.push(this);
+		return;
+	}
+	for (const auto& node : nodeLinks)
+	{
+		if (node->link->bIsAlive && node->targetNode != sender)
+		{
+			if (counter > 50)// avoid deathloops
+			{
+				return;
+			}
+			node->targetNode->ComputeNodePath(this, _id, path_out, counter + 1);
+			if (!path_out.empty())
+			{
+				path_out.push(this);
+				return;
+			}
+		}
 	}
 }
 
 //Physical dispatch
-void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
+void ANodeBase::SendPacket(APacket* packet)
 {
-	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded)
-	{
+	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded) {
 		packet->Destroy();
 		return;
 	}
-	if (packet->path.size() == 1)
-	{
+	if (packet->path.size() == 1) {
 		AcceptPacket(packet);
 		return;
 	}
 
 	ALink* link = nullptr;
-	for (auto& nodeLink : dynamic_cast<ANodeBase*>(*it)->nodeLinks)
+	AActor*& start_point = packet->path.top();
+	packet->path.pop();
+	AActor*& end_point = packet->path.top();
+
+	for (const auto& nodeLink : dynamic_cast<ANodeBase*>(start_point)->nodeLinks)
 	{
-		if (nodeLink->targetNode == it[1])
+		if (nodeLink->targetNode == end_point)
 		{
 			link = nodeLink->link;
-			if ((!it[0]->IsHidden() || !it[1]->IsHidden()) && !link->IsHidden())
+			if ((!start_point->IsHidden() || !end_point->IsHidden()) && !link->IsHidden())
 			{
 				packet->SetActorHiddenInGame(false);
 			}
@@ -206,14 +220,12 @@ void ANodeBase::SendPacket(APacket* packet, std::vector<AActor*>::iterator it)
 		}
 	}
 
-	float time = packet->sPacketMove->ComputeNodePath(*it[0], *it[1], link);
+	float time = packet->sPacketMove->ComputeNodePath(start_point, end_point, link);
 	link->AddWorkloadWithDelay(packet->size, time);
-	it[0] = nullptr;
-	++it;
 	FTimerHandle timer = FTimerHandle();
-	GetWorldTimerManager().SetTimer(timer, [packet, it, link]
+	GetWorldTimerManager().SetTimer(timer, [packet, start_point, link]
 	{
-		dynamic_cast<ANodeBase*>(*it)->CheckPacket(packet, it);
+		dynamic_cast<ANodeBase*>(start_point)->CheckPacket(packet);
 	}, 1.0f, false, time);
 }
 
@@ -221,22 +233,21 @@ void ANodeBase::SendAlarmPacket()
 {
 	if (eNodeType == ENodeType::Security)
 	{
-		APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-		packet->InitPacket(EPacketType::Helpful, this->id, -1, {});
+		APacket* packet = CreatePacket(this->id, EPacketType::Helpful);
 		packet->sHelper->isAlarm = true;
+		packet->path.pop();
 		AcceptPacket(packet);
 	}
 	if (ANodeSC::id_counter != 30)// if NodeSC exist
 	{
-		std::vector<ANodeBase*> nodes{};
-		DeterminePath(-1, nodes);
-		if (!nodes.empty())
-		{
-			APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			packet->InitPacket(EPacketType::Helpful, this->id, -1, std::vector<AActor*>(nodes.begin(), nodes.end()));
-			packet->sHelper->isAlarm = true;
-			SendPacket(packet, packet->path.begin());
+		APacket* packet = CreatePacket(-1, EPacketType::Helpful);
+
+		if (!packet) {
+			return;
 		}
+
+		packet->sHelper->isAlarm = true;
+		SendPacket(packet);
 	}
 }
 
@@ -267,12 +278,8 @@ void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0
 		1.0f, false, delay_time);
 }
 
-//empty
-void ANodeBase::GeneratePacket(int chance) 
-{
-}
 //Intermediate check (all nodes on the packet path)
-void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
+void ANodeBase::CheckPacket(APacket* packet)
 {
 	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded)
 	{
@@ -326,18 +333,18 @@ void ANodeBase::CheckPacket(APacket* packet, std::vector<AActor*>::iterator it)
 			}
 		}
 	}
-
-	if (it != packet->path.end() - 1)
+	if (packet->path.size() <= 1)
 	{
 		AddWorkloadWithDelay(add_work, delay_time);
 		FTimerHandle timer = FTimerHandle();
-		GetWorldTimerManager().SetTimer(timer, [packet, it]
+		GetWorldTimerManager().SetTimer(timer, [packet]
 		{
-			dynamic_cast<ANodeBase*>(*it)->SendPacket(packet, it);
+			dynamic_cast<ANodeBase*>(packet->path.top())->SendPacket(packet);
 		}, 1.0f, false, delay_time);
 	}
 	else
 	{
+		packet->path.pop();
 		AcceptPacket(packet);
 	}
 }
@@ -401,16 +408,16 @@ void ANodeBase::AcceptPacket(APacket* packet)
 					sSpyInfo->stolen_roots.end(), this->sInformation->vec_roots.begin(), this->sInformation->vec_roots.end());
 				this->sInformation->key_info_count = 0;
 			}
-			std::vector<ANodeBase*> nodes{};
-			DeterminePath(sSpyInfo->spy_id, nodes);
-			if (!nodes.empty())
-			{
-				APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-				packet->InitPacket(EPacketType::Simple, this->id, sSpyInfo->spy_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
-				packet->sInformation = new APacket::FInformation(false, sSpyInfo->stolen_key_info, {}, this);
-				sSpyInfo->stolen_key_info = 0;
-				SendPacket(packet, packet->path.begin());
+			APacket* packet = CreatePacket(sSpyInfo->spy_id, EPacketType::Simple);
+
+			if (!packet) {
+				return;
 			}
+
+			packet->sInformation = new APacket::FInformation(false, sSpyInfo->stolen_key_info, {}, this);
+			sSpyInfo->stolen_key_info = 0;
+			SendPacket(packet);
+
 		}, 20.0f, true, 20.0f);
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy attack succesful!");
 	} break;
@@ -529,27 +536,23 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		{
 			operationState = true;
 		}
-		std::vector<ANodeBase*> nodes{};
-		DeterminePath(packet->source_id, nodes);
-		if (!nodes.empty())
-		{
-			APacket* _packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-			_packet->InitPacket(EPacketType::Helpful, this->id, packet->source_id, std::vector<AActor*>(nodes.begin(), nodes.end()));
-			if (operationState)
-			{
-				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::SuccessReport;
-			}
-			else
-			{
-				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::DefeatReport;
-			}
-			SendPacket(_packet, _packet->path.begin());
+		APacket* response_packet = CreatePacket(packet->source_id, EPacketType::Helpful);
+
+		if (!packet) {
+			break;
 		}
+
+		response_packet->sHelper->eHelpState = operationState ? APacket::FHelper::EHelpState::SuccessReport : APacket::FHelper::EHelpState::DefeatReport;
+		SendPacket(response_packet);
 	} break;
 	}
 finish_acceptance:
 	AddWorkloadWithDelay(add_work, processing_time);
 	packet->Destroy();
+}
+//empty
+void ANodeBase::GeneratePacket(int chance)
+{
 }
 
 FString ANodeBase::GetInfo() const
@@ -602,7 +605,7 @@ void ANodeBase::AddInformation(ANodeBase* node_ptr)
 {
 	if (!sInformation)
 	{
-		sInformation = new Information();
+		sInformation = new FInformation();
 		sInformation->vec_net_id = { node_ptr };
 	}
 	else
@@ -610,11 +613,11 @@ void ANodeBase::AddInformation(ANodeBase* node_ptr)
 		if (sInformation->vec_net_id.empty()) sInformation->vec_net_id = { node_ptr };
 		else
 		{
-			auto contain = [](std::vector<ANodeBase*>& vec, int node_id) -> bool
+			auto contain = [](std::vector<ANodeBase*>& vec, int NodeId) -> bool
 			{
 				for (auto& elem : vec)
 				{
-					if (elem->id == node_id)
+					if (elem->id == NodeId)
 						return true;
 				}
 				return false;
@@ -630,7 +633,7 @@ void ANodeBase::AddKeyInfo()
 {
 	if (!sInformation)
 	{
-		sInformation = new Information();
+		sInformation = new FInformation();
 	}
 	sInformation->key_info_count = 2;
 }
@@ -638,7 +641,7 @@ void ANodeBase::AddRoots(int root_id)
 {
 	if (!sInformation)
 	{
-		sInformation = new Information();
+		sInformation = new FInformation();
 		sInformation->vec_roots.push_back(root_id);
 	}
 	else
@@ -649,11 +652,11 @@ void ANodeBase::AddRoots(int root_id)
 		}
 		else
 		{
-			auto contains = [](std::vector<short>& vec, int node_id) -> bool
+			auto contains = [](std::vector<short>& vec, int NodeId) -> bool
 			{
 				for (auto elem : vec)
 				{
-					if (elem == node_id) return true;
+					if (elem == NodeId) return true;
 				}
 				return false;
 			};
@@ -673,7 +676,9 @@ bool ANodeBase::FProtection::SignatureCheck(const APacket& packet) const
 	auto signCheck = [](const ESignature sign_1, const ESignature sign_2) -> bool
 	{
 		if (sign_1 == sign_2 && (rand() % 101 < sameSignChance))
+		{
 			return true;
+		}
 		switch (sign_1)
 		{
 			case ESignature::Crash_1: 

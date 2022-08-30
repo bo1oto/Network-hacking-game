@@ -3,12 +3,16 @@
 
 #include "Packet.h"
 
+enum EPacketMaterials : uint8
+{
+	SIMPLE = 0,
+	SPAM = 1,
+	ATTACK = 2,
+	INFORMATIVE = 3,
+	HELPFUL = 4
+};
 
-UMaterialInterface* APacket::simpleMat = nullptr;
-UMaterialInterface* APacket::spamMat = nullptr;
-UMaterialInterface* APacket::attackMat = nullptr;
-UMaterialInterface* APacket::infoMat = nullptr;
-UMaterialInterface* APacket::helpMat = nullptr;
+TArray<UMaterialInterface*> APacket::materials = {};
 
 
 APacket::APacket()
@@ -18,29 +22,29 @@ APacket::APacket()
 	RootComponent = Mesh;
 }
 
-void APacket::InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::vector<AActor*> _path)
+void APacket::InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::stack<AActor*> _path)
 {
 	packetType = _packetType;
 	switch (_packetType) {
 	case EPacketType::Simple:
-		Mesh->SetMaterial(0, simpleMat);
+		Mesh->SetMaterial(0, materials[EPacketMaterials::SIMPLE]);
 		size = 4;
 		break;
 	case EPacketType::Informative:
-		Mesh->SetMaterial(0, infoMat);
+		Mesh->SetMaterial(0, materials[EPacketMaterials::INFORMATIVE]);
 		size = 12;
 		break;
 	case EPacketType::AttackSpam:
-		Mesh->SetMaterial(0, spamMat);
+		Mesh->SetMaterial(0, materials[EPacketMaterials::SPAM]);
 		size = 4;
 		break;
 	case EPacketType::Helpful:
-		Mesh->SetMaterial(0, helpMat);
+		Mesh->SetMaterial(0, materials[EPacketMaterials::HELPFUL]);
 		size = 8;
 		sHelper = new FHelper();
 		break;
 	default:
-		Mesh->SetMaterial(0, attackMat);
+		Mesh->SetMaterial(0, materials[EPacketMaterials::ATTACK]);
 		size = 6;
 		sThreat = new FThreat();
 		break;
@@ -68,31 +72,30 @@ void APacket::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void APacket::FillMaterials(UMaterialInterface* simple, UMaterialInterface* spam, UMaterialInterface* attack, UMaterialInterface* info, UMaterialInterface* help)
+void APacket::FillMaterials(TArray<UMaterialInterface*>& _materials)
 {
-	simpleMat = simple;
-	spamMat = spam;
-	attackMat = attack;
-	infoMat = info;
-	helpMat = help;
+	materials = _materials;
 }
 
 APacket::FInformation::FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref) 
 	: isDSRequest(_isDSRequest), 
 	key_info_count(_key_info_count), 
 	roots_for_id(_roots_for_id), 
-	for_spy_ref(_for_spy_ref) {
+	for_spy_ref(_for_spy_ref) 
+{
 }
 
-float APacket::FPacketMove::ComputeNodePath(const AActor& source, const AActor& target, const ALink* _link)
+float APacket::FPacketMove::ComputeNodePath(AActor* const& source,  AActor* const& target, const ALink* _link)
 {
 	float speed = 4 * _link->speed_coef;
 	link = _link;
 	vector_path.clear();
-	FVector range = target.GetActorLocation() - source.GetActorLocation();
+	FVector range = target->GetActorLocation() - source->GetActorLocation();
+	FVector start_pos = source->GetActorLocation();
+
 	int max_i = static_cast<int>(range.Size() / speed);
 	FVector step_size = range / max_i;
-	FVector start_pos = source.GetActorLocation();
+
 	for (int i = 0; i < max_i; i++) {
 		vector_path.push_back(start_pos);
 		start_pos += step_size;
