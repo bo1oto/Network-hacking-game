@@ -97,43 +97,37 @@ void UWidget_Manager::StartGame()
 	isGameStart = true;
 }
 
-void UWidget_Manager::AddNodeInfo(ANodeBase* node_ptr, bool bAsID)
+void UWidget_Manager::AddNodeInfo(int node_id, bool bAsID)
 {
-	auto f = [node_ptr](const FNodeInfo& node_info) -> bool
-	{
-		return node_info.node_id == node_ptr->id;
+	auto f = [node_id](const FNodeInfo& node_info) -> bool {
+		return node_info.node_id == node_id;
 	};
 
+	ANodeBase* node_ptr = *UWidget_Manager::all_nodes.Find(node_id);
 	node_ptr->SetActorHiddenInGame(false);
 	//node_ptr->SetActorEnableCollision(true);
-	if (bAsID)
-	{
-		if (known_nodes.ContainsByPredicate(f))
-		{
+
+	if (bAsID) {
+		if (known_nodes.ContainsByPredicate(f)) {
 			return;
 		}
 		known_nodes.Add(FNodeInfo(node_ptr->id));
 	}
-	else
-	{
+	else {
 		node_ptr->Mesh->SetMaterial(0, node_ptr->main_mat);
 		FNodeInfo* fast_ptr = known_nodes.FindByPredicate(f);
-		if (fast_ptr != nullptr)
-		{
+		if (fast_ptr) {
 			fast_ptr->node_ptr = node_ptr;
 			fast_ptr->characteristic = UWidget_Manager::FillNodeCharacteristic(*node_ptr);
 			fast_ptr->bIsFullInfo = true;
 		}
-		else
-		{
+		else {
 			known_nodes.Add(FNodeInfo(node_ptr));
 		}
-		for (const auto& nodeLink : node_ptr->nodeLinks)
-		{
-			AddNodeInfo(nodeLink->targetNode, true);
-			nodeLink->targetNode->SetActorHiddenInGame(false);
-			//nodeLink->targetNode->SetActorEnableCollision(true);
+
+		for (const auto& nodeLink : node_ptr->nodeLinks) {
 			nodeLink->link->SetActorHiddenInGame(false);
+			AddNodeInfo(nodeLink->targetNode->id, true);
 		}
 	}
 
@@ -151,75 +145,61 @@ void UWidget_Manager::AddKeyInfo(int quantity)
 
 void UWidget_Manager::InitSpamAttack(int target_id, ANodeBase* source_node, int spoof_id)
 {
-	APacket* packet = source_node->CreatePacket(target_id, EPacketType::AttackSpam);
+	APacket* packet = source_node->CreatePacket(target_id, EPacketType::AttackSpam, spoof_id);
 
 	if (!packet) {
 		return;
 	}
 
-	if (spoof_id >= 0)
-	{
-		packet->source_id = spoof_id;
-	}
 	source_node->SendPacket(packet);
 }
 void UWidget_Manager::InitAttack(int target_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type)
 {
-	EPacketType _packetType;
+	EPacketType _packet_type;
 	ESignature _sign;
 	switch (attack_type)
 	{
 	case 0:
-		_packetType = EPacketType::AttackCapture;
+		_packet_type = EPacketType::AttackCapture;
 		_sign = upThreat ? ESignature::RootKit_2 : ESignature::RootKit_1;
 		break;
 	case 1:
-		_packetType = EPacketType::AttackCrash;
+		_packet_type = EPacketType::AttackCrash;
 		_sign = upThreat ? ESignature::Crash_2 : ESignature::Crash_1;
 		break;
 	case 2:
-		_packetType = EPacketType::AttackSpy;
+		_packet_type = EPacketType::AttackSpy;
 		_sign = upThreat ? ESignature::Spy_2 : ESignature::Spy_1;
 		break;
 	default:
-		_packetType = EPacketType::Simple;
+		_packet_type = EPacketType::Simple;
 		_sign = ESignature::NotSign;
 		break;
 	}
 
-	APacket* packet = source_node->CreatePacket(target_id, _packetType);
+	APacket* packet = source_node->CreatePacket(target_id, _packet_type, spoof_id);
 
 	if (!packet) {
 		return;
 	}
 
-	int _spy_id = attack_type == 2 ? source_node->id : -2;
-	packet->sThreat = new APacket::FThreat(_sign, roots.Contains(target_id), _spy_id);
-
-	if (spoof_id >= 0)
-	{
-		packet->source_id = spoof_id;
-	}
+	int _spy_master_id = attack_type == 2 ? source_node->id : -2;
+	packet->sThreat = new APacket::FThreat(_sign, roots.Contains(target_id), _spy_master_id);
 
 	source_node->SendPacket(packet);
 
 }
 void UWidget_Manager::InitInformative(int target_id, ANodeBase* source_node, int spoof_id)
 {
-	APacket* packet = source_node->CreatePacket(target_id, EPacketType::Informative);
+	APacket* packet = source_node->CreatePacket(target_id, EPacketType::Informative, spoof_id);
 
 	if (!packet) {
 		return;
 	}
 
-	packet->sInformation = new APacket::FInformation(false, 0, {}, source_node);
-	if (source_node->sInformation)
-	{
+	packet->sInformation = new APacket::FInformation(false, 0, {}, { source_node->id });
+	if (source_node->sInformation) {
 		packet->sInformation->key_info_count += source_node->sInformation->key_info_count;
-	}
-	if (spoof_id >= 0)
-	{
-		packet->source_id = spoof_id;
 	}
 	source_node->SendPacket(packet);
 }

@@ -71,7 +71,7 @@ public:
 
 	struct FInformation final
 	{
-		std::vector<ANodeBase*> known_ids;
+		std::vector<int> known_ids;
 		std::vector<int> node_roots;
 		int key_info_count = 0;
 	};
@@ -79,9 +79,11 @@ public:
 private:
 	struct FSpyInfo final
 	{
+		FSpyInfo(int _spy_id);
 		FTimerHandle spyTimer;
-		int stolen_key_info = 0;
-		std::vector<short> stolen_roots;
+		int stolen_key_info;
+		std::vector<int> stolen_roots;
+		std::vector<int> stolen_node_info;
 		int spy_id = -2;
 	};
 
@@ -93,7 +95,7 @@ public:
 
 	int FindRouter(int _vlan, int counter = 0) const;
 
-	APacket* CreatePacket(int target_id, EPacketType packet_type);
+	APacket* CreatePacket(int target_id, EPacketType packet_type, int spoof_source = -2);
 
 	ANodeBase* CheckNeighbour(int NodeId) const;
 	ANodeBase* CheckNeighbour(ENodeType _nodeType) const;

@@ -6,8 +6,6 @@
 #include <functional>
 
 #include "Uncrushable/Widget_Manager.h"
-#include "NodeTI.h"
-#include "NodeSC.h"
 
 
 bool ANodeBase::bIsAlarm = false;
@@ -97,7 +95,7 @@ int ANodeBase::FindRouter(int _vlan, int counter) const
 	return -1;
 }
 
-APacket* ANodeBase::CreatePacket(int target_id, EPacketType packet_type)
+APacket* ANodeBase::CreatePacket(int target_id, EPacketType packet_type, int spoof_source)
 {
 	std::stack<AActor*> nodes_stack{};
 	DeterminePath(target_id, nodes_stack);
@@ -105,25 +103,23 @@ APacket* ANodeBase::CreatePacket(int target_id, EPacketType packet_type)
 		return nullptr;
 	}
 	APacket* packet = GetWorld()->SpawnActor<APacket>(packetTemp, this->GetActorLocation(), FRotator(0, 0, 0), FActorSpawnParameters());
-	packet->InitPacket(packet_type, this->id, target_id, nodes_stack);
+	packet->InitPacket(packet_type, spoof_source != -2 ? spoof_source : id, target_id, nodes_stack);
 	return packet;
 }
 
 ANodeBase* ANodeBase::CheckNeighbour(int NodeId) const
 {
-	for (const auto& nodeLink : nodeLinks)
-	{
-		if (nodeLink->targetNode->id == NodeId)
+	for (const auto& nodeLink : nodeLinks) {
+		if (nodeLink->targetNode->id == NodeId) {
 			return nodeLink->targetNode;
+		}
 	}
 	return nullptr;
 }
 ANodeBase* ANodeBase::CheckNeighbour(ENodeType _nodeType) const
 {
-	for (const auto& nodeLink : nodeLinks)
-	{
-		if (nodeLink->targetNode->eNodeType == _nodeType)
-		{
+	for (const auto& nodeLink : nodeLinks) {
+		if (nodeLink->targetNode->eNodeType == _nodeType) {
 			return nodeLink->targetNode;
 		}
 	}
@@ -208,15 +204,12 @@ void ANodeBase::SendPacket(APacket* packet)
 
 	for (const auto& nodeLink : dynamic_cast<ANodeBase*>(start_point)->nodeLinks)
 	{
-		if (nodeLink->targetNode == end_point)
-		{
+		if (nodeLink->targetNode == end_point) {
 			link = nodeLink->link;
-			if ((!start_point->IsHidden() || !end_point->IsHidden()) && !link->IsHidden())
-			{
+			if ((!start_point->IsHidden() || !end_point->IsHidden()) && !link->IsHidden()) {
 				packet->SetActorHiddenInGame(false);
 			}
-			else
-			{
+			else {
 				packet->SetActorHiddenInGame(true);
 			}
 			break;
@@ -236,18 +229,15 @@ void ANodeBase::SendAlarmPacket()
 		packet->path.pop();
 		AcceptPacket(packet);
 	}
-	if (ANodeSC::id_counter != 30)// if NodeSC exist
-	{
-		APacket* packet = CreatePacket(-1, EPacketType::Helpful);
+	APacket* packet = CreatePacket(-1, EPacketType::Helpful);
 
-		if (!packet) {
-			return;
-		}
-
-		packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Alarm, true);
-
-		SendPacket(packet);
+	if (!packet) {
+		return;
 	}
+
+	packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Alarm, true);
+
+	SendPacket(packet);
 }
 
 void ANodeBase::AddWorkload(int quantity)
@@ -280,8 +270,7 @@ void ANodeBase::AddWorkloadWithDelay(short _add_work = 0, float delay_time = 0.0
 //Intermediate check (all nodes on the packet path)
 void ANodeBase::CheckPacket(APacket* packet)
 {
-	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded)
-	{
+	if (eNodeState == ENodeState::Offline || eNodeState == ENodeState::Overloaded) {
 		packet->Destroy();
 		return;
 	}
@@ -336,8 +325,7 @@ void ANodeBase::CheckPacket(APacket* packet)
 	{
 		AddWorkloadWithDelay(add_work, delay_time);
 		FTimerHandle timer = FTimerHandle();
-		GetWorldTimerManager().SetTimer(timer, [packet]
-		{
+		GetWorldTimerManager().SetTimer(timer, [packet]() -> void {
 			dynamic_cast<ANodeBase*>(packet->path.top())->SendPacket(packet);
 		}, 1.0f, false, delay_time);
 	}
@@ -387,12 +375,11 @@ void ANodeBase::AcceptPacket(APacket* packet)
 	case EPacketType::AttackSpy:
 	{
 		//infects the node with a spy who collects information and sends it to a hacker
-		sSpyInfo = new FSpyInfo{ FTimerHandle(), 0, {}, packet->sThreat->spy_id };
+		sSpyInfo = new FSpyInfo(packet->sThreat->spy_master_id);
 		AddWorkload(5);
 		GetWorldTimerManager().SetTimer(sSpyInfo->spyTimer, [this]
 		{
-			if (sProtection && sProtection->bIsOn && sProtection->behaviorAnalizer && (rand() % 101 < behaviorChance))
-			{
+			if (sProtection && sProtection->bIsOn && sProtection->behaviorAnalizer && (rand() % 101 < behaviorChance)) {
 				GetWorldTimerManager().ClearTimer(sSpyInfo->spyTimer);
 				delete sSpyInfo;
 				AddWorkload(-5);
@@ -400,20 +387,22 @@ void ANodeBase::AcceptPacket(APacket* packet)
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Spy detected!");
 				return;
 			}
-			if (this->sInformation)
-			{
-				sSpyInfo->stolen_key_info += this->sInformation->key_info_count;
-				sSpyInfo->stolen_roots.insert(
-					sSpyInfo->stolen_roots.end(), this->sInformation->node_roots.begin(), this->sInformation->node_roots.end());
-				this->sInformation->key_info_count = 0;
+
+			if (sInformation) {
+				sSpyInfo->stolen_key_info += sInformation->key_info_count;
+				sInformation->key_info_count = 0;
+				sSpyInfo->stolen_roots.insert(sSpyInfo->stolen_roots.end(), sInformation->node_roots.begin(),sInformation->node_roots.end());
+				sSpyInfo->stolen_node_info.insert(sSpyInfo->stolen_node_info.end(), sInformation->known_ids.begin(), sInformation->known_ids.end());
+				sSpyInfo->stolen_node_info.push_back(id);
 			}
+
 			APacket* packet = CreatePacket(sSpyInfo->spy_id, EPacketType::Simple);
 
 			if (!packet) {
 				return;
 			}
-
-			packet->sInformation = new APacket::FInformation(false, sSpyInfo->stolen_key_info, {}, this);
+			//можно добавить спуф id из известных узлов
+			packet->sInformation = new APacket::FInformation(false, sSpyInfo->stolen_key_info, {}, sSpyInfo->stolen_node_info);
 			sSpyInfo->stolen_key_info = 0;
 			SendPacket(packet);
 
@@ -429,7 +418,17 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			processing_time += 2.0f;
 			eNodeState = ENodeState::Captured;
 			if (sProtection) sProtection->bIsOn = false;
-			UWidget_Manager::self_ref->AddNodeInfo(this, false);
+			/* ƒолжно быть так, тип он должен сообщить о захвате, но пока пусть так, мб это какое-то PtP
+			APacket* packet = CreatePacket(sSpyInfo->spy_id, EPacketType::Simple);
+
+			if (!packet) {
+				return;
+			}
+
+			packet->sInformation = new APacket::FInformation(false, 0, {}, { id });
+			SendPacket(packet);*/
+
+			UWidget_Manager::self_ref->AddNodeInfo(id, false);
 			UWidget_Manager::self_ref->roots.Remove(this->id);
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured by roots!");
 			goto finish_acceptance;
@@ -471,7 +470,16 @@ void ANodeBase::AcceptPacket(APacket* packet)
 				AddWorkloadWithDelay(10, 2.0f);
 				eNodeState = ENodeState::Captured;
 				if (sProtection) sProtection->bIsOn = false;
-				UWidget_Manager::self_ref->AddNodeInfo(this, false);
+				/* јналогично захвату через руты
+				APacket* packet = CreatePacket(sSpyInfo->spy_id, EPacketType::Simple);
+
+				if (!packet) {
+					return;
+				}
+
+				packet->sInformation = new APacket::FInformation(false, 0, {}, { id });
+				SendPacket(packet);*/
+				UWidget_Manager::self_ref->AddNodeInfo(id, false);
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Captured!");
 			}
 		}, brutforse_time / 10.0f, true, 0.0f);
@@ -481,8 +489,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 		//Shuts down the node completely
 		eNodeState = ENodeState::Offline;
 		FTimerHandle timer = FTimerHandle();
-		GetWorldTimerManager().SetTimer(timer, [this]
-		{
+		GetWorldTimerManager().SetTimer(timer, [this]() {
 			eNodeState = ENodeState::Working;
 		}, 1.0f, false, 30.0f);
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Crushed!");
@@ -603,28 +610,28 @@ void ANodeBase::SetVLAN(int num)
 
 void ANodeBase::AddInformation(ANodeBase* node_ptr)
 {
-	if (!sInformation)
-	{
+	if (!sInformation) {
 		sInformation = new FInformation();
-		sInformation->known_ids = { node_ptr };
+		sInformation->known_ids = { node_ptr->id };
 	}
-	else
-	{
-		if (sInformation->known_ids.empty()) sInformation->known_ids = { node_ptr };
-		else
-		{
-			auto contain = [](std::vector<ANodeBase*>& vec, int NodeId) -> bool
+	else {
+		if (sInformation->known_ids.empty()) {
+			sInformation->known_ids = { node_ptr->id };
+		}
+		else {
+			auto contains = [](std::vector<int>& _ids, int node_id) -> bool
 			{
-				for (auto& elem : vec)
+				for (const auto& _id : _ids)
 				{
-					if (elem->id == NodeId)
+					if (_id == node_id) {
 						return true;
+					}
 				}
 				return false;
 			};
-			if (!contain(sInformation->known_ids, node_ptr->id))
+			if (!contains(sInformation->known_ids, node_ptr->id))
 			{
-				sInformation->known_ids.push_back(node_ptr);
+				sInformation->known_ids.push_back(node_ptr->id);
 			}
 		}
 	}
@@ -670,6 +677,14 @@ bool ANodeBase::ContainInfo()
 	return sInformation != nullptr;
 }
 
+ANodeBase::FSpyInfo::FSpyInfo(int _spy_id)
+	: spyTimer(FTimerHandle()),
+	stolen_key_info(0),
+	stolen_roots(std::vector<int>()),
+	stolen_node_info(std::vector<int>()),
+	spy_id(_spy_id)
+{
+}
 
 bool ANodeBase::FProtection::SignatureCheck(const APacket& packet) const
 {

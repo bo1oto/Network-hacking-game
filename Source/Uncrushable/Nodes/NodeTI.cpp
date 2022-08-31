@@ -53,17 +53,13 @@ bool ANodeTI::CheckIDInTable(int _id) const
 
 void ANodeTI::AcceptPacket(APacket* packet)
 {
-	if (packet->target_id != id)
-	{
-		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->bIsRaiseAlarm && eNodeState != ENodeState::Captured)
-		{
+	if (packet->target_id != id) {
+		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->bIsRaiseAlarm && eNodeState != ENodeState::Captured) {
 			// Then look for the closest known security node
 			std::stack<AActor*> main{}, bolv{};
 			int _id = -2;
-			for (int i = ANodeSC::id_counter - 1; i >= 30; --i)
-			{
-				if (CheckIDInTable(i))
-				{
+			for (int i = ANodeSC::id_counter - 1; i >= 30; --i) {
+				if (CheckIDInTable(i)) {
 					ComputeNodePath(this, i, main);
 					if (bolv.empty() || main.size() < bolv.size())
 					{
@@ -72,8 +68,7 @@ void ANodeTI::AcceptPacket(APacket* packet)
 					}
 				}
 			}
-			if (!bolv.empty())
-			{
+			if (!bolv.empty()) {
 				packet->target_id = _id;
 				packet->path.swap(bolv);
 				SendPacket(packet);

@@ -26,36 +26,24 @@ void ANodeEO::BeginPlay()
 
 void ANodeEO::AcceptPacket(APacket* packet)
 {
-	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation && packet->sInformation->for_spy_ref)
+	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation)
 	{
-		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
-		
-		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
-		if (!packet->sInformation->roots_for_id.empty())
-		{
-			for (auto root : packet->sInformation->roots_for_id)
-			{
-				if (!UWidget_Manager::self_ref->known_nodes.ContainsByPredicate([root](FNodeInfo nodeInfo) -> bool
-				{
-					return nodeInfo.node_id == root && nodeInfo.node_ptr && nodeInfo.node_ptr->eNodeState == ENodeState::Captured;
-				}))
-				{
-					if (!UWidget_Manager::self_ref->roots.Contains(root)) 
-						UWidget_Manager::self_ref->roots.Add(root);
-				}
+		if (packet->sInformation->key_info_count) {
+			UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
+		}
+
+		for (const auto root_id : packet->sInformation->roots_for_id) {
+			if ((*UWidget_Manager::all_nodes.Find(root_id))->eNodeState != ENodeState::Captured) {
+				UWidget_Manager::self_ref->roots.Add(root_id);
 			}
 		}
-		ANodeBase::FInformation* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
-		if (fast_ptr)
+
+		for (const auto& elem : packet->sInformation->nodes_info)
 		{
-			for (auto elem : fast_ptr->known_ids)
-			{
-				UWidget_Manager::self_ref->AddNodeInfo(elem, true);
-			}
+			UWidget_Manager::self_ref->AddNodeInfo(elem, true);
 		}
 	}
-	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count)
-	{
+	if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count) {
 		UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 	}
 	ANodeBase::AcceptPacket(packet);

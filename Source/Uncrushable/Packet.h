@@ -64,19 +64,19 @@ public:
 	struct FInformation final
 	{
 		FInformation() = delete;
-		FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref);
-		bool isDSRequest = false;
-		uint8 key_info_count = 0;
+		FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, std::vector<int> _nodes_info);
+		bool isDSRequest;
+		uint8 key_info_count;
 		std::vector<uint8> roots_for_id;
-		AActor* for_spy_ref = nullptr;
+		std::vector<int> nodes_info;
 	};
 	struct FThreat final
 	{
 		FThreat() = delete;
-		FThreat(ESignature _sign, bool _have_root, int _spy_id = -2);
+		FThreat(ESignature _sign, bool _have_root, int _spy_master_id = -2);
 		ESignature sign = ESignature::NotSign;
 		bool have_root = false;
-		int spy_id;
+		int spy_master_id;
 	};
 
 private:

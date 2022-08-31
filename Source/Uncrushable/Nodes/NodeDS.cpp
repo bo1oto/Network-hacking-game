@@ -25,7 +25,7 @@ void ANodeDS::AcceptPacket(APacket* packet)
 {
 	if (packet->packetType == EPacketType::Informative && packet->sInformation->isDSRequest)
 	{
-		packet->sInformation = new APacket::FInformation(false, 1, {}, nullptr);
+		packet->sInformation = new APacket::FInformation(false, 1, {}, {});
 		SendPacket(packet);
 	}
 	ANodeBase::AcceptPacket(packet);

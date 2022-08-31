@@ -23,27 +23,27 @@ void ANodePC::BeginPlay()
 
 void ANodePC::AcceptPacket(APacket* packet)
 {
-	if (bHasPhysicalConnection && eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple 
-		&& packet->sInformation && packet->sInformation->for_spy_ref)
+	if (bHasPhysicalConnection && eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation)
 	{
-		UWidget_Manager::self_ref->AddNodeInfo((ANodeBase*)(packet->sInformation->for_spy_ref), false);
-		
-		if (packet->sInformation->key_info_count) UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
-		if (!packet->sInformation->roots_for_id.empty())
+		if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Simple && packet->sInformation)
 		{
-			for (auto root : packet->sInformation->roots_for_id)
+			if (packet->sInformation->key_info_count) {
+				UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
+			}
+
+			for (const auto root_id : packet->sInformation->roots_for_id) {
+				if ((*UWidget_Manager::all_nodes.Find(root_id))->eNodeState != ENodeState::Captured) {
+					UWidget_Manager::self_ref->roots.Add(root_id);
+				}
+			}
+
+			for (const auto& elem : packet->sInformation->nodes_info)
 			{
-				if (!UWidget_Manager::self_ref->known_nodes.ContainsByPredicate([root](FNodeInfo nodeInfo)
-				{
-					return nodeInfo.node_id == root;
-				}))
-					UWidget_Manager::self_ref->roots.Add(root);
+				UWidget_Manager::self_ref->AddNodeInfo(elem, true);
 			}
 		}
-		ANodeBase::FInformation* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
-		if (fast_ptr)
-		{
-			for (auto elem : fast_ptr->known_ids) UWidget_Manager::self_ref->AddNodeInfo(elem, true);
+		if (eNodeState == ENodeState::Captured && packet->packetType == EPacketType::Informative && packet->sInformation->key_info_count) {
+			UWidget_Manager::self_ref->AddKeyInfo(packet->sInformation->key_info_count);
 		}
 	}
 	ANodeBase::AcceptPacket(packet);
@@ -117,7 +117,7 @@ void ANodePC::GeneratePacket(int chance)
 			return;
 		}
 
-		packet->sInformation = new APacket::FInformation(false, 0, {}, nullptr);
+		packet->sInformation = new APacket::FInformation(false, 0, {}, {});
 		switch (std::rand() % 3)
 		{
 		case 0: packet->sInformation->roots_for_id.push_back(70 + std::rand() % (ANodePC::id_counter - 70)); break; //Root PC
@@ -137,7 +137,7 @@ void ANodePC::GeneratePacket(int chance)
 			return;
 		}
 
-		packet->sInformation = new APacket::FInformation(true, 0, {}, nullptr);
+		packet->sInformation = new APacket::FInformation(true, 0, {}, {});
 		SendPacket(packet);
 	}
 }

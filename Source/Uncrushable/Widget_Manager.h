@@ -44,7 +44,7 @@ public:
 	void StartGame();
 
 	UFUNCTION(BlueprintCallable)
-	void AddNodeInfo(ANodeBase* node_ptr, bool bAsID);
+	void AddNodeInfo(int node_id, bool bAsID);
 
 	void AddKeyInfo(int quantity);
 	UFUNCTION(BlueprintCallable)
@@ -72,7 +72,7 @@ public:
 	int key_info_counter = 0;
 	//Roots are deleted as soon as they have been used + Roots are not important for the captured node
 	UPROPERTY(BlueprintReadWrite, meta = (BindingWidget))
-	TArray<int> roots;
+	TSet<int> roots;
 	
 	UPROPERTY(BlueprintReadWrite)
 	TArray<	FNodeInfo> known_nodes = {};

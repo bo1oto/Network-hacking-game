@@ -145,17 +145,17 @@ APacket::FHelper::FHelper(EHelpState _eHelpState, bool _bIsRaiseAlarm)
 {
 }
 
-APacket::FInformation::FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref)
+APacket::FInformation::FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, std::vector<int> _nodes_info)
 	: isDSRequest(_isDSRequest),
 	key_info_count(_key_info_count),
 	roots_for_id(_roots_for_id),
-	for_spy_ref(_for_spy_ref)
+	nodes_info(_nodes_info)
 {
 }
 
-APacket::FThreat::FThreat(ESignature _sign, bool _have_root, int _spy_id)
+APacket::FThreat::FThreat(ESignature _sign, bool _have_root, int _spy_master_id)
 	: sign(_sign),
 	have_root(_have_root),
-	spy_id(spy_id)
+	spy_master_id(_spy_master_id)
 {
 }
