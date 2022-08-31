@@ -6,9 +6,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
-#include <array>
-#include <vector>
+#include<queue>
 #include <stack>
+#include <functional>
 
 #include "Link.h"
 
@@ -72,45 +72,52 @@ public:
 		bool have_root = false;
 		int spy_id = -2;
 	};
+
+private:
 	struct FPacketMove final
 	{
-		float ComputeNodePath( AActor* const & source,  AActor* const& target, const ALink* _link);
+		FPacketMove(ALink* const& _link, const std::function<void(APacket* packet)>& f);
 		bool bIsMoving = false;
-		std::vector<FVector> vector_path;
-		std::vector<FVector>::iterator it_path;
-		const ALink* link = nullptr;
+		ALink* link = nullptr;
+		std::function<void(APacket* packet)> f_checkPacket;
+		std::queue<FVector> vector_path;
 	};
 
 public:
 	APacket();
 	//copy constructor
 	//= operator
-	//destructor
-	void InitPacket(EPacketType _packetType, short _sourceId, short _targetId, std::stack<AActor*> _path);
+	~APacket();
 
 protected:
 	virtual void BeginPlay() final;
 
 public:
-	virtual void Tick(float DeltaTime) final;
-
 	UFUNCTION(BlueprintCallable)
 	static void FillMaterials(TArray<UMaterialInterface*>& _materials);
 
-public:
-	static TArray<UMaterialInterface*> materials;
+	virtual void Tick(float DeltaTime) final;
 
+	void InitPacket(EPacketType _packetType, int _source_id, int _target_id, std::stack<AActor*> _path);
+
+	void InitPacketMove(AActor* const& source, AActor* const& target, ALink* const& _link, const std::function<void(APacket* packet)>& f);
+
+public:
 	int size;
-	short source_id = -2, target_id = -2;
+	int source_id, target_id;
 	EPacketType packetType;
 	std::stack<AActor*> path;
 
 	FHelper* sHelper;
 	FInformation* sInformation;
 	FThreat* sThreat;
-	FPacketMove* sPacketMove;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UStaticMeshComponent* Mesh;
+
+private:
+	static TArray<UMaterialInterface*> materials;
+
+	FPacketMove* sPacketMove;
 
 };

@@ -3,6 +3,8 @@
 
 #include "NodeBase.h"
 
+#include <functional>
+
 #include "Uncrushable/Widget_Manager.h"
 #include "NodeTI.h"
 #include "NodeSC.h"
@@ -220,13 +222,8 @@ void ANodeBase::SendPacket(APacket* packet)
 		}
 	}
 
-	float time = packet->sPacketMove->ComputeNodePath(start_point, end_point, link);
-	link->AddWorkloadWithDelay(packet->size, time);
-	FTimerHandle timer = FTimerHandle();
-	GetWorldTimerManager().SetTimer(timer, [packet, start_point, link]
-	{
-		dynamic_cast<ANodeBase*>(start_point)->CheckPacket(packet);
-	}, 1.0f, false, time);
+	// Packet will compute path and start moving
+	packet->InitPacketMove(start_point, end_point, link, std::bind(&ANodeBase::CheckPacket, dynamic_cast<ANodeBase*>(end_point), std::placeholders::_1));
 }
 
 void ANodeBase::SendAlarmPacket()
