@@ -48,17 +48,18 @@ public:
 
 	void AddKeyInfo(int quantity);
 	UFUNCTION(BlueprintCallable)
-	void InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id);
+	void InitSpamAttack(int target_id, ANodeBase* source_node, int spoof_id);
 
 	UFUNCTION(BlueprintCallable)
-	void InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
+	void InitAttack(int target_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type);
 
 	UFUNCTION(BlueprintCallable)
-	void InitInformative(int target_node_id, ANodeBase* source_node, int spoof_id);
+	void InitInformative(int target_id, ANodeBase* source_node, int spoof_id);
 
 public:
 	static UWidget_Manager* self_ref;
 	static bool isGameStart;
+	static TMap<int, ANodeBase*> all_nodes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	float network_activity_time_tick = 2.0f;

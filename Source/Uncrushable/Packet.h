@@ -37,6 +37,7 @@ enum class EPacketType : uint8
 	Helpful
 };
 
+
 UCLASS()
 class UNCRUSHABLE_API APacket : public AActor
 {
@@ -51,11 +52,14 @@ public:
 			Healer,
 			SuccessReport,
 			DefeatReport,
-			Prevention
+			Prevention,
+			Alarm
 		};
+
+		FHelper() = delete;
+		FHelper(EHelpState _eHelpState, bool _bIsRaiseAlarm);
 		EHelpState eHelpState;
-		std::vector<ESignature> sign;
-		bool isAlarm = false;
+		bool bIsRaiseAlarm = false;
 	};
 	struct FInformation final
 	{
@@ -68,9 +72,11 @@ public:
 	};
 	struct FThreat final
 	{
+		FThreat() = delete;
+		FThreat(ESignature _sign, bool _have_root, int _spy_id = -2);
 		ESignature sign = ESignature::NotSign;
 		bool have_root = false;
-		int spy_id = -2;
+		int spy_id;
 	};
 
 private:
@@ -85,8 +91,6 @@ private:
 
 public:
 	APacket();
-	//copy constructor
-	//= operator
 	~APacket();
 
 protected:
@@ -94,11 +98,11 @@ protected:
 
 public:
 	UFUNCTION(BlueprintCallable)
-	static void FillMaterials(TArray<UMaterialInterface*>& _materials);
+	static void FillMaterials(TArray<UMaterialInterface*>& _materials) noexcept;
 
 	virtual void Tick(float DeltaTime) final;
 
-	void InitPacket(EPacketType _packetType, int _source_id, int _target_id, std::stack<AActor*> _path);
+	void InitPacket(EPacketType _packetType, int _source_id, int _target_id, std::stack<AActor*> _path) noexcept;
 
 	void InitPacketMove(AActor* const& source, AActor* const& target, ALink* const& _link, const std::function<void(APacket* packet)>& f);
 

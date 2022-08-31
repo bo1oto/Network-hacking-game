@@ -34,6 +34,7 @@ void ANodeBase::BeginPlay()
 	sProtection = new FProtection();
 	sProtection->threatSigns = { ESignature::Crash_1, ESignature::RootKit_1, ESignature::Spy_1 };
 	ANodeBase::ePolitic = EPolitic::NotForbidden;
+	UWidget_Manager::all_nodes.Add(TPair<int, ANodeBase*>(this->id, this));
 }
 
 //static
@@ -231,7 +232,7 @@ void ANodeBase::SendAlarmPacket()
 	if (eNodeType == ENodeType::Security)
 	{
 		APacket* packet = CreatePacket(this->id, EPacketType::Helpful);
-		packet->sHelper->isAlarm = true;
+		packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Alarm, true);
 		packet->path.pop();
 		AcceptPacket(packet);
 	}
@@ -243,7 +244,8 @@ void ANodeBase::SendAlarmPacket()
 			return;
 		}
 
-		packet->sHelper->isAlarm = true;
+		packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Alarm, true);
+
 		SendPacket(packet);
 	}
 }
@@ -402,7 +404,7 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			{
 				sSpyInfo->stolen_key_info += this->sInformation->key_info_count;
 				sSpyInfo->stolen_roots.insert(
-					sSpyInfo->stolen_roots.end(), this->sInformation->vec_roots.begin(), this->sInformation->vec_roots.end());
+					sSpyInfo->stolen_roots.end(), this->sInformation->node_roots.begin(), this->sInformation->node_roots.end());
 				this->sInformation->key_info_count = 0;
 			}
 			APacket* packet = CreatePacket(sSpyInfo->spy_id, EPacketType::Simple);
@@ -539,7 +541,8 @@ void ANodeBase::AcceptPacket(APacket* packet)
 			break;
 		}
 
-		response_packet->sHelper->eHelpState = operationState ? APacket::FHelper::EHelpState::SuccessReport : APacket::FHelper::EHelpState::DefeatReport;
+		response_packet->sHelper = new APacket::FHelper(operationState ? APacket::FHelper::EHelpState::SuccessReport : APacket::FHelper::EHelpState::DefeatReport, false);
+
 		SendPacket(response_packet);
 	} break;
 	}
@@ -603,11 +606,11 @@ void ANodeBase::AddInformation(ANodeBase* node_ptr)
 	if (!sInformation)
 	{
 		sInformation = new FInformation();
-		sInformation->vec_net_id = { node_ptr };
+		sInformation->known_ids = { node_ptr };
 	}
 	else
 	{
-		if (sInformation->vec_net_id.empty()) sInformation->vec_net_id = { node_ptr };
+		if (sInformation->known_ids.empty()) sInformation->known_ids = { node_ptr };
 		else
 		{
 			auto contain = [](std::vector<ANodeBase*>& vec, int NodeId) -> bool
@@ -619,9 +622,9 @@ void ANodeBase::AddInformation(ANodeBase* node_ptr)
 				}
 				return false;
 			};
-			if (!contain(sInformation->vec_net_id, node_ptr->id))
+			if (!contain(sInformation->known_ids, node_ptr->id))
 			{
-				sInformation->vec_net_id.push_back(node_ptr);
+				sInformation->known_ids.push_back(node_ptr);
 			}
 		}
 	}
@@ -639,17 +642,17 @@ void ANodeBase::AddRoots(int root_id)
 	if (!sInformation)
 	{
 		sInformation = new FInformation();
-		sInformation->vec_roots.push_back(root_id);
+		sInformation->node_roots.push_back(root_id);
 	}
 	else
 	{
-		if (sInformation->vec_roots.empty())
+		if (sInformation->node_roots.empty())
 		{
-			sInformation->vec_roots.push_back(root_id);
+			sInformation->node_roots.push_back(root_id);
 		}
 		else
 		{
-			auto contains = [](std::vector<short>& vec, int NodeId) -> bool
+			auto contains = [](std::vector<int>& vec, int NodeId) -> bool
 			{
 				for (auto elem : vec)
 				{
@@ -657,7 +660,7 @@ void ANodeBase::AddRoots(int root_id)
 				}
 				return false;
 			};
-			if (!contains(sInformation->vec_roots, root_id)) sInformation->vec_roots.push_back(root_id);
+			if (!contains(sInformation->node_roots, root_id)) sInformation->node_roots.push_back(root_id);
 		}
 	}
 }

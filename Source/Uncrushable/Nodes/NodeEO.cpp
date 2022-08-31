@@ -48,7 +48,7 @@ void ANodeEO::AcceptPacket(APacket* packet)
 		ANodeBase::FInformation* fast_ptr = ((ANodeBase*)packet->sInformation->for_spy_ref)->sInformation;
 		if (fast_ptr)
 		{
-			for (auto elem : fast_ptr->vec_net_id)
+			for (auto elem : fast_ptr->known_ids)
 			{
 				UWidget_Manager::self_ref->AddNodeInfo(elem, true);
 			}

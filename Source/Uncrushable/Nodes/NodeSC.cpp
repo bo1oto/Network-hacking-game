@@ -64,7 +64,7 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				break;
 			}
 		}
-		if (packet->sHelper->isAlarm)
+		if (packet->sHelper->bIsRaiseAlarm)
 		{
 			if (!ANodeBase::bIsAlarm)
 			{
@@ -102,7 +102,7 @@ void ANodeSC::SaveThisWorld()
 			return;
 		}
 
-		packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Healer;
+		packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Healer, false);
 
 		FTimerHandle* timer = new FTimerHandle();
 		sApocalypseRescueKit->list_apocalypse_timers.push_back(std::make_pair(timer, false));
@@ -118,7 +118,12 @@ void ANodeSC::SaveThisWorld()
 			if ((*it).second)
 			{
 				APacket* _packet = CreatePacket(_id, EPacketType::Helpful);
-				_packet->sHelper->eHelpState = APacket::FHelper::EHelpState::Killer;
+
+				if (!_packet) {
+					return;
+				}
+
+				_packet->sHelper = new APacket::FHelper(APacket::FHelper::EHelpState::Killer, false);
 
 				SendPacket(_packet);
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Killer for " + FString::FromInt(_id) + " coming!");

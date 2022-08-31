@@ -71,8 +71,8 @@ public:
 
 	struct FInformation final
 	{
-		std::vector<ANodeBase*> vec_net_id;
-		std::vector<short> vec_roots;
+		std::vector<ANodeBase*> known_ids;
+		std::vector<int> node_roots;
 		int key_info_count = 0;
 	};
 

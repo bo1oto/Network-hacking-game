@@ -55,7 +55,7 @@ void ANodeTI::AcceptPacket(APacket* packet)
 {
 	if (packet->target_id != id)
 	{
-		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->isAlarm && eNodeState != ENodeState::Captured)
+		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->bIsRaiseAlarm && eNodeState != ENodeState::Captured)
 		{
 			// Then look for the closest known security node
 			std::stack<AActor*> main{}, bolv{};

@@ -8,6 +8,7 @@
 
 UWidget_Manager* UWidget_Manager::self_ref = nullptr;
 bool UWidget_Manager::isGameStart = false;
+TMap<int, ANodeBase*> UWidget_Manager::all_nodes = {};
 
 
 FNodeInfo::FNodeInfo() :
@@ -74,6 +75,9 @@ FString UWidget_Manager::FillNodeCharacteristic(const ANodeBase& node_ptr)
 
 void UWidget_Manager::StartGame()
 {
+	TArray<AActor*> for_all_nodes = TArray<AActor*>();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANodeBase::StaticClass(), for_all_nodes);
+
 	TArray<AActor*> nodes_arr = TArray<AActor*>();
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANodePC::StaticClass(), nodes_arr);
 	generation_timers = new std::vector<FTimerHandle>();
@@ -145,9 +149,9 @@ void UWidget_Manager::AddKeyInfo(int quantity)
 	}
 }
 
-void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node, int spoof_id)
+void UWidget_Manager::InitSpamAttack(int target_id, ANodeBase* source_node, int spoof_id)
 {
-	APacket* packet = source_node->CreatePacket(target_node_id, EPacketType::AttackSpam);
+	APacket* packet = source_node->CreatePacket(target_id, EPacketType::AttackSpam);
 
 	if (!packet) {
 		return;
@@ -159,7 +163,7 @@ void UWidget_Manager::InitSpamAttack(int target_node_id, ANodeBase* source_node,
 	}
 	source_node->SendPacket(packet);
 }
-void UWidget_Manager::InitAttack(int target_node_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type)
+void UWidget_Manager::InitAttack(int target_id, ANodeBase* source_node, bool upThreat, int spoof_id, int attack_type)
 {
 	EPacketType _packetType;
 	ESignature _sign;
@@ -183,32 +187,26 @@ void UWidget_Manager::InitAttack(int target_node_id, ANodeBase* source_node, boo
 		break;
 	}
 
-	APacket* packet = source_node->CreatePacket(target_node_id, _packetType);
+	APacket* packet = source_node->CreatePacket(target_id, _packetType);
 
 	if (!packet) {
 		return;
 	}
 
-	packet->sThreat->sign = _sign;
+	int _spy_id = attack_type == 2 ? source_node->id : -2;
+	packet->sThreat = new APacket::FThreat(_sign, roots.Contains(target_id), _spy_id);
+
 	if (spoof_id >= 0)
 	{
 		packet->source_id = spoof_id;
-	}
-	if (attack_type == 2)
-	{
-		packet->sThreat->spy_id = source_node->id;
-	}
-	if (roots.Contains(target_node_id))
-	{
-		packet->sThreat->have_root = true;
 	}
 
 	source_node->SendPacket(packet);
 
 }
-void UWidget_Manager::InitInformative(int target_node_id, ANodeBase* source_node, int spoof_id)
+void UWidget_Manager::InitInformative(int target_id, ANodeBase* source_node, int spoof_id)
 {
-	APacket* packet = source_node->CreatePacket(target_node_id, EPacketType::Informative);
+	APacket* packet = source_node->CreatePacket(target_id, EPacketType::Informative);
 
 	if (!packet) {
 		return;

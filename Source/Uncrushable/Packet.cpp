@@ -39,16 +39,17 @@ APacket::~APacket()
 }
 
 
-
 void APacket::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
-void APacket::FillMaterials(TArray<UMaterialInterface*>& _materials)
+
+void APacket::FillMaterials(TArray<UMaterialInterface*>& _materials) noexcept
 {
 	materials = _materials;
 }
+
 
 void APacket::Tick(float DeltaTime)
 {
@@ -68,7 +69,7 @@ void APacket::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void APacket::InitPacket(EPacketType _packetType, int _source_id, int _target_id, std::stack<AActor*> _path)
+void APacket::InitPacket(EPacketType _packetType, int _source_id, int _target_id, std::stack<AActor*> _path) noexcept
 {
 	packetType = _packetType;
 	switch (_packetType) {
@@ -87,13 +88,11 @@ void APacket::InitPacket(EPacketType _packetType, int _source_id, int _target_id
 	case EPacketType::Helpful:
 		Mesh->SetMaterial(0, materials[EPacketMaterials::HELPFUL]);
 		size = 8;
-		sHelper = new FHelper();
 		break;
 	case EPacketType::AttackCapture:
 	case EPacketType::AttackCrash:
 		Mesh->SetMaterial(0, materials[EPacketMaterials::ATTACK]);
 		size = 6;
-		sThreat = new FThreat();
 		break;
 	default:
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Can't init packet!");
@@ -139,10 +138,24 @@ void APacket::InitPacketMove(AActor* const& source,  AActor* const& target, ALin
 	sPacketMove->bIsMoving = true;//Packet start moveing in Tick()
 }
 
+
+APacket::FHelper::FHelper(EHelpState _eHelpState, bool _bIsRaiseAlarm)
+	: eHelpState(_eHelpState),
+	bIsRaiseAlarm(_bIsRaiseAlarm)
+{
+}
+
 APacket::FInformation::FInformation(bool _isDSRequest, uint8 _key_info_count, std::vector<uint8> _roots_for_id, AActor* _for_spy_ref)
 	: isDSRequest(_isDSRequest),
 	key_info_count(_key_info_count),
 	roots_for_id(_roots_for_id),
 	for_spy_ref(_for_spy_ref)
+{
+}
+
+APacket::FThreat::FThreat(ESignature _sign, bool _have_root, int _spy_id)
+	: sign(_sign),
+	have_root(_have_root),
+	spy_id(spy_id)
 {
 }
