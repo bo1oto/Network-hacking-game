@@ -14,17 +14,18 @@ struct FNodeInfo
 {
 	GENERATED_BODY()
 
+	// for in-engine creations
 	FNodeInfo();
 public:
 	FNodeInfo(int _node_id);
 	FNodeInfo(ANodeBase* _node_ptr);
 
 	UPROPERTY(BlueprintReadOnly)
-	int node_id;
+	int ID;
 	UPROPERTY(BlueprintReadOnly)
-	ANodeBase* node_ptr;
+	ANodeBase* NodePtr;
 	UPROPERTY(BlueprintReadOnly)
-	FString characteristic;
+	FString Characteristic;
 	bool bIsFullInfo;
 };
 
@@ -36,9 +37,11 @@ class UNCRUSHABLE_API UWidget_Manager : public UUserWidget
 public:
 
 	UFUNCTION(BlueprintCallable)
-	static void SetSelfRef(UWidget_Manager* _self_ref);
+	static void SetSelfRef(UWidget_Manager* _self_ref) noexcept;
+	UFUNCTION(BlueprintCallable)
+	static void AddToAllNodes(int id, ANodeBase* NodePtr) noexcept;
 
-	static FString FillNodeCharacteristic(const ANodeBase& node_ptr);
+	static FString FillNodeCharacteristic(const ANodeBase& NodePtr);
 
 	UFUNCTION(BlueprintCallable)
 	void StartGame();
@@ -58,24 +61,24 @@ public:
 
 public:
 	static UWidget_Manager* self_ref;
-	static bool isGameStart;
+	static bool bIsGameStart;
 	static TMap<int, ANodeBase*> all_nodes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
-	float network_activity_time_tick = 2.0f;
+	float NetworkActivityInterval = 2.0f;
 	/* 20 - victory
 	* Intercepted packet from DS to PC - 1
 	* Information downloaded from DS (depending on the number of DS, but this is usually 10)
 	* Information contained on PC/SC - 2
 	*/
 	UPROPERTY(BlueprintReadOnly, meta = (BindingWidget))
-	int key_info_counter = 0;
+	int nKeyInfo = 0;
 	//Roots are deleted as soon as they have been used + Roots are not important for the captured node
 	UPROPERTY(BlueprintReadWrite, meta = (BindingWidget))
-	TSet<int> roots;
+	TSet<int> NodeRoots;
 	
 	UPROPERTY(BlueprintReadWrite)
-	TArray<	FNodeInfo> known_nodes = {};
+	TArray<FNodeInfo> known_nodes = {};
 
 private:
 	std::vector<FTimerHandle>* generation_timers;

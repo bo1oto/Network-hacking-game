@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "NodePC.h"
 
 #include "Uncrushable/Widget_Manager.h"
@@ -17,7 +14,7 @@ void ANodePC::BeginPlay()
 	ANodeBase::BeginPlay();
 	AddWorkload(30);
 	eNodeType = ENodeType::PersonalComputer;
-	id = id_counter;
+	NodeID = id_counter;
 	++id_counter;
 }
 
@@ -32,8 +29,8 @@ void ANodePC::AcceptPacket(APacket* packet)
 			}
 
 			for (const auto root_id : packet->sInformation->roots_for_id) {
-				if ((*UWidget_Manager::all_nodes.Find(root_id))->eNodeState != ENodeState::Captured) {
-					UWidget_Manager::self_ref->roots.Add(root_id);
+				if (UWidget_Manager::all_nodes[root_id]->eNodeState != ENodeState::Captured) {
+					UWidget_Manager::self_ref->NodeRoots.Emplace(root_id);
 				}
 			}
 
@@ -54,21 +51,21 @@ void ANodePC::GeneratePacket(int chance)
 	if (chance < 60) {
 		return;
 	}
-	auto generate_PC_ID = [my_id = this->id]() -> int {
-		int id = 70 + std::rand() % (ANodePC::id_counter - 70);
-		if (id == my_id)
+	auto generate_PC_ID = [my_id = this->NodeID]() -> int {
+		int NodeID = 70 + std::rand() % (ANodePC::id_counter - 70);
+		if (NodeID == my_id)
 		{
-			if (id + 1 != ANodePC::id_counter && id + 1 < 90)
+			if (NodeID + 1 != ANodePC::id_counter && NodeID + 1 < 90)
 			{
-				return id + 1;
+				return NodeID + 1;
 			}
-			if (id - 1 != ANodePC::id_counter && id - 1 > ANodePC::id_counter)
+			if (NodeID - 1 != ANodePC::id_counter && NodeID - 1 > ANodePC::id_counter)
 			{
-				return id - 1;
+				return NodeID - 1;
 			}
 			return -2;
 		}
-		return id;
+		return NodeID;
 	};
 
 	/* PC chance:

@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "Nodes.h"
 
 
@@ -15,7 +12,7 @@ void ANodeSC::BeginPlay()
 	ANodeBase::BeginPlay();
 	AddWorkload(40);
 	eNodeType = ENodeType::Security;
-	id = id_counter;
+	NodeID = id_counter;
 	id_counter++;
 	helpTimer = FTimerHandle();
 	sProtection->behaviorAnalizer = true;
@@ -46,17 +43,17 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				(*it).first = nullptr;
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Help for " + FString::FromInt(packet->source_id) + " successful!");
 
-				AddWorkloadWithDelay(5, 2.0f);
+				AddTemporaryWorkload(5, 2.0f);
 				packet->Destroy();
 				return;
 			}
 			case APacket::FHelper::EHelpState::DefeatReport:
 			{
 				(*it).second = true;
-				AddWorkloadWithDelay(5, 2.0f);
+				AddTemporaryWorkload(5, 2.0f);
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Help for " + FString::FromInt(packet->source_id) + " failed!");
 
-				AddWorkloadWithDelay(5, 2.0f);
+				AddTemporaryWorkload(5, 2.0f);
 				packet->Destroy();
 				return;
 			}
@@ -80,7 +77,7 @@ void ANodeSC::AcceptPacket(APacket* packet)
 				}
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Alarm!!!");
 			}
-			AddWorkloadWithDelay(10, 1.0f);
+			AddTemporaryWorkload(10, 1.0f);
 			packet->Destroy();
 			return;
 		}
@@ -160,6 +157,6 @@ void ANodeSC::SaveThisWorld()
 	}
 	for (int i = 30; i < ANodeSC::id_counter; ++i)
 	{
-		if (i != id) BlessAndSave(i);
+		if (i != NodeID) BlessAndSave(i);
 	}
 }

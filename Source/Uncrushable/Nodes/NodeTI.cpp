@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "NodeTI.h"
 
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
@@ -24,9 +21,9 @@ void ANodeTI::BeginPlay()
 	AddWorkload(20);
 	eNodeType = ENodeType::TechnicalInfrastructure;
 	routingTable = {};
-	id = id_counter;
+	NodeID = id_counter;
 	id_counter++;
-	vlan = vlan_counter;
+	VLAN = vlan_counter;
 	vlan_counter++;
 	sInformation = new FInformation();
 }
@@ -53,7 +50,7 @@ bool ANodeTI::CheckIDInTable(int _id) const
 
 void ANodeTI::AcceptPacket(APacket* packet)
 {
-	if (packet->target_id != id) {
+	if (packet->target_id != NodeID) {
 		if (packet->packetType == EPacketType::Helpful && packet->sHelper && packet->sHelper->bIsRaiseAlarm && eNodeState != ENodeState::Captured) {
 			// Then look for the closest known security node
 			std::stack<AActor*> main{}, bolv{};
@@ -93,7 +90,7 @@ void ANodeTI::AcceptPacket(APacket* packet)
 			packet->Destroy();
 		}
 	add_work:
-		AddWorkloadWithDelay(3, 0.2f);
+		AddTemporaryWorkload(3, 0.2f);
 	}
 	else
 	{
@@ -104,9 +101,9 @@ void ANodeTI::AcceptPacket(APacket* packet)
 
 void ANodeTI::CreateVLAN(ANodeTI* node)
 {
-	Routing* route = new Routing(node->vlan);
+	Routing* route = new Routing(node->VLAN);
 	routingTable.push_back(route);
-	FillVLAN(route->id_numbers, route->vlan);
+	FillVLAN(route->id_numbers, route->VLAN);
 }
 
 void ANodeTI::FillVLAN(std::vector<int>& id_vec, int vlan_num)
@@ -125,22 +122,22 @@ void ANodeTI::FillVLAN(std::vector<int>& id_vec, int vlan_num)
 	{
 		for (auto nodeLink : target->nodeLinks)
 		{
-			if (nodeLink->targetNode->vlan == vlan_num && !contains(id_vec, nodeLink->targetNode->id))
+			if (nodeLink->targetNode->VLAN == vlan_num && !contains(id_vec, nodeLink->targetNode->NodeID))
 			{
-				id_vec.push_back(nodeLink->targetNode->id);
+				id_vec.push_back(nodeLink->targetNode->NodeID);
 				f(id_vec, nodeLink->targetNode);
 			}
 		}
 	};
 	f(id_vec, this);
-	if (vlan == vlan_num && !contains(id_vec, id)) id_vec.push_back(id);
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, (TEXT("VLAN ") + FString::FromInt(vlan) + TEXT(" members: ") + FString::FromInt(id_vec.size())));
+	if (VLAN == vlan_num && !contains(id_vec, NodeID)) id_vec.push_back(NodeID);
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, (TEXT("VLAN ") + FString::FromInt(VLAN) + TEXT(" members: ") + FString::FromInt(id_vec.size())));
 
 	TArray<AActor*> nodes_arr = TArray<AActor*>();
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANodeBase::StaticClass(), nodes_arr);
-	nodes_arr = nodes_arr.FilterByPredicate( [id_vec, contains](AActor* const &node_ptr)
+	nodes_arr = nodes_arr.FilterByPredicate( [id_vec, contains](AActor* const &NodePtr)
 	{
-		return contains(id_vec, ((ANodeBase*)node_ptr)->id);
+		return contains(id_vec, ((ANodeBase*)NodePtr)->NodeID);
 	});
 	for (auto elem : nodes_arr)
 	{
@@ -151,6 +148,6 @@ void ANodeTI::FillVLAN(std::vector<int>& id_vec, int vlan_num)
 
 ANodeTI::Routing::Routing(int vlan_num)
 {
-	vlan = vlan_num;
+	VLAN = vlan_num;
 	id_numbers = {};
 }

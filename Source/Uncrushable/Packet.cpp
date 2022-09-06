@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "Packet.h"
 
 enum EPacketMaterials : uint8
@@ -45,7 +42,7 @@ void APacket::BeginPlay()
 }
 
 
-void APacket::FillMaterials(TArray<UMaterialInterface*>& _materials) noexcept
+void APacket::FillMaterials(TArray<UMaterialInterface*> _materials) noexcept
 {
 	materials = _materials;
 }
@@ -73,30 +70,36 @@ void APacket::InitPacket(EPacketType _packetType, int _source_id, int _target_id
 {
 	packetType = _packetType;
 	switch (_packetType) {
-	case EPacketType::Simple:
-		Mesh->SetMaterial(0, materials[EPacketMaterials::SIMPLE]);
-		size = 4;
-		break;
-	case EPacketType::Informative:
-		Mesh->SetMaterial(0, materials[EPacketMaterials::INFORMATIVE]);
-		size = 12;
-		break;
-	case EPacketType::AttackSpam:
-		Mesh->SetMaterial(0, materials[EPacketMaterials::SPAM]);
-		size = 4;
-		break;
-	case EPacketType::Helpful:
-		Mesh->SetMaterial(0, materials[EPacketMaterials::HELPFUL]);
-		size = 8;
-		break;
-	case EPacketType::AttackCapture:
-	case EPacketType::AttackCrash:
-		Mesh->SetMaterial(0, materials[EPacketMaterials::ATTACK]);
-		size = 6;
-		break;
-	default:
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Can't init packet!");
-		break;
+		case EPacketType::Simple: {
+			Mesh->SetMaterial(0, materials[EPacketMaterials::SIMPLE]);
+			size = 4;
+			break;
+		}
+		case EPacketType::Informative: {
+			Mesh->SetMaterial(0, materials[EPacketMaterials::INFORMATIVE]);
+			size = 12;
+			break;
+		}
+		case EPacketType::AttackSpam: {
+			Mesh->SetMaterial(0, materials[EPacketMaterials::SPAM]);
+			size = 4;
+			break;
+		}
+		case EPacketType::Helpful: {
+			Mesh->SetMaterial(0, materials[EPacketMaterials::HELPFUL]);
+			size = 8;
+			break;
+		}
+		case EPacketType::AttackCapture:
+		case EPacketType::AttackCrash: {
+			Mesh->SetMaterial(0, materials[EPacketMaterials::ATTACK]);
+			size = 6;
+			break;
+		}
+		default: {
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, "Can't init packet!");
+			break;
+		}
 	}
 	source_id = _source_id;
 	target_id = _target_id;
@@ -133,7 +136,7 @@ void APacket::InitPacketMove(AActor* const& source,  AActor* const& target, ALin
 		start_pos += step_size;
 	}
 	float time = max_i / 60.0f;//60 FPS ?
-	sPacketMove->link->AddWorkloadWithDelay(size, time);
+	sPacketMove->link->AddTemporaryWorkload(size, time);
 
 	sPacketMove->bIsMoving = true;//Packet start moveing in Tick()
 }

@@ -22,28 +22,24 @@ class UNCRUSHABLE_API ALink : public AActor
 	
 public:	
 	ALink();
-	//copy constructor
-	//= operator
-	//destructor
 
 	virtual void Tick(float DeltaTime) final;
 
 
 	UFUNCTION(BlueprintCallable)
-	void SetLinkType(uint8 num);
+	void InitializeLink(uint8 num);
 
 	UFUNCTION(BlueprintCallable)
 	inline TArray<FText> GetKeyParameters() const;
 	inline FText GetTypeInfo() const;
 
-	inline void AddWorkload(short quantity, float last_packet_time);
-	void AddWorkloadWithDelay(short _add_work, float delay_time);
+	void AddWorkload(int quantity, float last_packet_time = 0.0f);
+	void AddTemporaryWorkload(int _add_work, float delay_time);
 
 protected:
 	virtual void BeginPlay() final;
 
 public:	
-
 	UPROPERTY(BlueprintReadWrite)
 	bool bIsAlive = true;
 

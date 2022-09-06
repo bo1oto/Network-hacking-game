@@ -98,7 +98,7 @@ protected:
 
 public:
 	UFUNCTION(BlueprintCallable)
-	static void FillMaterials(TArray<UMaterialInterface*>& _materials) noexcept;
+	static void FillMaterials(TArray<UMaterialInterface*> _materials) noexcept;
 
 	virtual void Tick(float DeltaTime) final;
 

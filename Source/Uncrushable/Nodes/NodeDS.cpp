@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "NodeDS.h"
 
 
@@ -15,7 +12,7 @@ void ANodeDS::BeginPlay()
 	ANodeBase::BeginPlay();
 	AddWorkload(20);
 	eNodeType = ENodeType::DataStorage;
-	id = id_counter;
+	NodeID = id_counter;
 	id_counter++;
 	sInformation = new FInformation();
 	sInformation->key_info_count = 20;

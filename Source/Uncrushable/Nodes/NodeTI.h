@@ -17,7 +17,7 @@ class UNCRUSHABLE_API ANodeTI : public ANodeBase
 	struct Routing final
 	{
 		Routing(int vlan_num);
-		int vlan;
+		int VLAN;
 		std::vector<int> id_numbers;
 	};
 	

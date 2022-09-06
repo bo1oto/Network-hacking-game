@@ -1,6 +1,3 @@
-
-#pragma once
-
 #include "NodeEO.h"
 
 #include "Uncrushable/Widget_Manager.h"
@@ -20,7 +17,7 @@ void ANodeEO::BeginPlay()
 	eNodeState = ENodeState::Captured;
 	delete sProtection;
 	sProtection = nullptr;
-	id = id_counter;
+	NodeID = id_counter;
 	id_counter++;
 }
 
@@ -33,8 +30,8 @@ void ANodeEO::AcceptPacket(APacket* packet)
 		}
 
 		for (const auto root_id : packet->sInformation->roots_for_id) {
-			if ((*UWidget_Manager::all_nodes.Find(root_id))->eNodeState != ENodeState::Captured) {
-				UWidget_Manager::self_ref->roots.Add(root_id);
+			if (UWidget_Manager::all_nodes[root_id]->eNodeState != ENodeState::Captured) {
+				UWidget_Manager::self_ref->NodeRoots.Emplace(root_id);
 			}
 		}
 

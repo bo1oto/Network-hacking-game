@@ -116,31 +116,34 @@ protected:
 
 	void SendAlarmPacket();
 
-	inline void AddWorkload(int quantity);
-	void AddWorkloadWithDelay(short _add_work, float delay_time);
+	void AddWorkload(int quantity);
+	void AddTemporaryWorkload(int _add_work = 0, float delay_time = 0.0f);
 
 	virtual void CheckPacket(APacket* packet);
 
 	virtual void AcceptPacket(APacket* packet);
 
-	virtual void GeneratePacket(int chance);
+	virtual void GeneratePacket(int chance) { };
 
 
 	UFUNCTION(BlueprintCallable, Category = "Information")
-	FString GetInfo() const;
+	inline FString GetInfo() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Information")
-	FText GetTypeInfo() const;
-	FString GetStateInfo() const;
+	inline FText GetTypeInfo() const;
+	inline FString GetStateInfo() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Information")
-	TArray<FText> GetKeyParameters() const;
+	inline TArray<FText> GetKeyParameters() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void SetVLAN(int num);
 
+	UFUNCTION(BlueprintCallable)
+	inline bool ContainInfo();
+
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
-	void AddInformation(ANodeBase* node_ptr);
+	void AddInformation(ANodeBase* NodePtr);
 
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddKeyInfo();
@@ -148,8 +151,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "GameRules")
 	void AddRoots(int root_id);
 
-	UFUNCTION(BlueprintCallable)
-	bool ContainInfo();
 
 
 public:
@@ -160,10 +161,10 @@ public:
 	ENodeState eNodeState;
 
 	UPROPERTY(BlueprintReadOnly)
-	int vlan = 0;
+	int VLAN = 0;
 
 	UPROPERTY(BlueprintReadOnly)
-	int id;
+	int NodeID;
 
 	ENodeType eNodeType;
 
@@ -173,7 +174,7 @@ public:
 
 
 	UPROPERTY(BlueprintReadWrite, Category = "Graphics")
-	UMaterialInterface* main_mat;
+	UMaterialInterface* Material;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Graphics")
 	UStaticMeshComponent* Mesh;
